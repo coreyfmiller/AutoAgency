@@ -26,42 +26,69 @@ export async function POST(request: NextRequest) {
       .replace(/[^a-z0-9-]/g, "-")
       .replace(/-+/g, "-");
 
-    console.log("[deploy] Creating Vercel project:", vercelName, "from", repoFullName);
+    console.log("[deploy] Deploying:", vercelName, "from", repoFullName);
 
-    // Create Vercel project linked to GitHub repo
-    const projectResponse = await fetch("https://api.vercel.com/v10/projects", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${process.env.VERCEL_API_TOKEN}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        name: vercelName,
-        framework: "nextjs",
-        gitRepository: {
-          type: "github",
-          repo: repoFullName,
-        },
-        buildCommand: "next build",
-        resourceConfig: {
-          buildMachineType: "elastic",
-        },
-      }),
-    });
+    // Check if Vercel project already exists
+    const checkRes = await fetch(
+      `https://api.vercel.com/v9/projects/${vercelName}`,
+      {
+        headers: { Authorization: `Bearer ${process.env.VERCEL_API_TOKEN}` },
+      }
+    );
 
-    if (!projectResponse.ok) {
-      const error = await projectResponse.text();
-      console.error("[deploy] Project creation failed:", error);
-      throw new Error(`Vercel project creation failed: ${error}`);
+    if (!checkRes.ok) {
+      // Project doesn't exist — create it
+      console.log("[deploy] Creating new Vercel project...");
+      const projectResponse = await fetch("https://api.vercel.com/v10/projects", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${process.env.VERCEL_API_TOKEN}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: vercelName,
+          framework: "nextjs",
+          gitRepository: {
+            type: "github",
+            repo: repoFullName,
+          },
+          buildCommand: "next build",
+          resourceConfig: {
+            buildMachineType: "elastic",
+          },
+        }),
+      });
+
+      if (!projectResponse.ok) {
+        const error = await projectResponse.text();
+        console.error("[deploy] Project creation failed:", error);
+        throw new Error(`Vercel project creation failed: ${error}`);
+      }
+
+      console.log("[deploy] Project created");
+    } else {
+      console.log("[deploy] Project already exists");
     }
 
-    const project = await projectResponse.json();
-    console.log("[deploy] Project created:", project.id);
-
     // Trigger a build by pushing a deploy trigger file to the repo
-    // This forces Vercel to pick up the repo and start building
+    // Get existing file SHA if it exists
+    let sha: string | undefined;
+    const existingRes = await fetch(
+      `https://api.github.com/repos/${repoFullName}/contents/.vercel-trigger`,
+      {
+        headers: {
+          Authorization: `token ${process.env.GITHUB_TOKEN}`,
+          Accept: "application/vnd.github.v3+json",
+        },
+      }
+    );
+    if (existingRes.ok) {
+      const existing = await existingRes.json();
+      sha = existing.sha;
+    }
+
     const triggerContent = `Deployed via RefreshFactory.ai at ${new Date().toISOString()}`;
-    
+
     await fetch(
       `https://api.github.com/repos/${repoFullName}/contents/.vercel-trigger`,
       {
@@ -74,6 +101,7 @@ export async function POST(request: NextRequest) {
         body: JSON.stringify({
           message: "Trigger Vercel deployment",
           content: Buffer.from(triggerContent).toString("base64"),
+          ...(sha ? { sha } : {}),
         }),
       }
     );
@@ -83,7 +111,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       url: `https://${vercelName}.vercel.app`,
-      projectId: project.id,
     });
   } catch (error) {
     console.error("[deploy] Error:", error);

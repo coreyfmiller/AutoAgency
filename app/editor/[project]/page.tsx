@@ -1,0 +1,384 @@
+"use client"
+
+import { useState, useEffect, useCallback } from "react"
+import { motion } from "framer-motion"
+import {
+  Send,
+  Loader2,
+  RefreshCw,
+  Image as ImageIcon,
+  X,
+  CheckCircle2,
+  AlertCircle,
+  ArrowLeft,
+  Clock,
+} from "lucide-react"
+import { useParams } from "next/navigation"
+import Link from "next/link"
+
+interface FileInfo {
+  path: string;
+  sha: string;
+}
+
+interface EditHistoryItem {
+  instruction: string;
+  updatedFiles: string[];
+  timestamp: number;
+}
+
+export default function EditorPage() {
+  const params = useParams()
+  const project = params.project as string
+
+  const [repoFullName, setRepoFullName] = useState("")
+  const [vercelUrl, setVercelUrl] = useState("")
+  const [files, setFiles] = useState<FileInfo[]>([])
+  const [images, setImages] = useState<string[]>([])
+  const [selectedImages, setSelectedImages] = useState<string[]>([])
+  const [showMediaPanel, setShowMediaPanel] = useState(false)
+
+  const [instruction, setInstruction] = useState("")
+  const [isEditing, setIsEditing] = useState(false)
+  const [editHistory, setEditHistory] = useState<EditHistoryItem[]>([])
+  const [error, setError] = useState<string | null>(null)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const [iframeKey, setIframeKey] = useState(0)
+  const [isLoading, setIsLoading] = useState(true)
+
+  // Load project data from localStorage
+  useEffect(() => {
+    const stored = localStorage.getItem("clientfactory-project")
+    if (stored) {
+      try {
+        const data = JSON.parse(stored)
+        const state = data.state
+        if (state?.githubUrl) {
+          const match = state.githubUrl.match(/github\.com\/([^/]+\/[^/]+)/)
+          if (match) setRepoFullName(match[1])
+        }
+        if (state?.deploymentUrl) {
+          setVercelUrl(state.deploymentUrl)
+        }
+        if (state?.auditResult?.scraped?.images) {
+          setImages(state.auditResult.scraped.images)
+        }
+      } catch {}
+    }
+  }, [])
+
+  // Load file list from repo
+  const loadFiles = useCallback(async () => {
+    if (!repoFullName) return
+    setIsLoading(true)
+    try {
+      const res = await fetch("/api/editor/read-files", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ repoFullName }),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setFiles(data.files)
+      }
+    } catch {}
+    setIsLoading(false)
+  }, [repoFullName])
+
+  useEffect(() => {
+    loadFiles()
+  }, [loadFiles])
+
+  // Also load images from the repo's public/images folder
+  useEffect(() => {
+    if (!repoFullName) return
+    fetch(`https://api.github.com/repos/${repoFullName}/contents/public/images`, {
+      headers: { Accept: "application/vnd.github.v3+json" },
+    })
+      .then((res) => res.ok ? res.json() : [])
+      .then((data) => {
+        if (Array.isArray(data)) {
+          const repoImages = data.map((f: { name: string }) => f.name)
+          setImages((prev) => [...new Set([...repoImages, ...prev])])
+        }
+      })
+      .catch(() => {})
+  }, [repoFullName])
+
+  const handleSendEdit = async () => {
+    if (!instruction.trim() && selectedImages.length === 0) return
+    if (!repoFullName) return
+
+    setIsEditing(true)
+    setError(null)
+    setSuccessMessage(null)
+
+    let message = instruction.trim()
+    if (selectedImages.length > 0) {
+      const imageNames = selectedImages
+      message = message
+        ? `${message}\n\nUse these images: ${imageNames.join(", ")}`
+        : `Add these images to the site: ${imageNames.join(", ")}`
+    }
+
+    try {
+      const res = await fetch("/api/editor/edit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          repoFullName,
+          instruction: message,
+          images: selectedImages,
+          fileList: files,
+        }),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        throw new Error(data.error || "Edit failed")
+      }
+
+      setEditHistory((prev) => [
+        { instruction: message, updatedFiles: data.updatedFiles, timestamp: Date.now() },
+        ...prev,
+      ])
+      setSuccessMessage(data.message)
+      setInstruction("")
+      setSelectedImages([])
+
+      // Refresh file list
+      await loadFiles()
+
+      // Auto-refresh iframe after 35 seconds (Vercel rebuild time)
+      setTimeout(() => {
+        setIframeKey((k) => k + 1)
+      }, 35000)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Edit failed")
+    } finally {
+      setIsEditing(false)
+    }
+  }
+
+  const refreshPreview = () => {
+    setIframeKey((k) => k + 1)
+  }
+
+  const toggleImage = (img: string) => {
+    setSelectedImages((prev) =>
+      prev.includes(img) ? prev.filter((i) => i !== img) : [...prev, img]
+    )
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <header className="border-b border-border/50 backdrop-blur-sm sticky top-0 z-50 bg-background/80">
+        <div className="max-w-[1800px] mx-auto px-6 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Link href="/" className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
+              <ArrowLeft className="w-4 h-4" />
+              <span className="text-sm">Back</span>
+            </Link>
+            <div className="w-px h-6 bg-border" />
+            <h1 className="text-lg font-semibold text-foreground font-mono">
+              Editor: <span className="text-primary">{project}</span>
+            </h1>
+          </div>
+          <div className="flex items-center gap-3">
+            {vercelUrl && (
+              <a
+                href={vercelUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-muted-foreground hover:text-foreground"
+              >
+                {vercelUrl.replace("https://", "")}
+              </a>
+            )}
+            <button
+              onClick={refreshPreview}
+              className="px-3 py-1.5 rounded-lg bg-secondary text-sm font-medium text-foreground hover:bg-secondary/80 flex items-center gap-1.5"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              Refresh
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Layout */}
+      <div className="flex h-[calc(100vh-57px)]">
+        {/* Left Panel - Editor */}
+        <div className="w-[400px] border-r border-border/50 flex flex-col">
+          {/* Edit Input */}
+          <div className="p-4 border-b border-border/50">
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowMediaPanel(!showMediaPanel)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors ${
+                    showMediaPanel ? "bg-primary/10 text-primary" : "bg-secondary text-foreground"
+                  }`}
+                >
+                  <ImageIcon className="w-3.5 h-3.5" />
+                  Media
+                </button>
+                {selectedImages.length > 0 && (
+                  <span className="text-xs text-primary font-medium">
+                    {selectedImages.length} selected
+                  </span>
+                )}
+              </div>
+
+              <div className="flex gap-2">
+                <textarea
+                  value={instruction}
+                  onChange={(e) => setInstruction(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault()
+                      handleSendEdit()
+                    }
+                  }}
+                  placeholder="e.g., Add gallery images, remove Pergolas from services, change hero background..."
+                  disabled={isEditing}
+                  className="flex-1 px-3 py-2 rounded-xl bg-secondary/50 border border-border/50 text-foreground placeholder:text-muted-foreground text-sm outline-none focus:border-primary/50 resize-none h-20 disabled:opacity-60"
+                />
+              </div>
+
+              <button
+                onClick={handleSendEdit}
+                disabled={isEditing || (!instruction.trim() && selectedImages.length === 0)}
+                className="w-full px-4 py-2.5 rounded-xl bg-gradient-to-r from-primary to-accent text-primary-foreground font-medium text-sm flex items-center justify-center gap-2 disabled:opacity-60"
+              >
+                {isEditing ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Editing...
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-4 h-4" />
+                    Apply Edit
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* Status Messages */}
+            {successMessage && (
+              <motion.div
+                initial={{ opacity: 0, y: -5 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mt-3 flex items-center gap-2 px-3 py-2 rounded-lg bg-green-500/10 border border-green-500/20"
+              >
+                <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
+                <span className="text-xs text-green-600">{successMessage}</span>
+              </motion.div>
+            )}
+
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, y: -5 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mt-3 flex items-center gap-2 px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/20"
+              >
+                <AlertCircle className="w-3.5 h-3.5 text-red-500" />
+                <span className="text-xs text-red-600">{error}</span>
+              </motion.div>
+            )}
+          </div>
+
+          {/* Media Panel */}
+          {showMediaPanel && (
+            <div className="p-4 border-b border-border/50 max-h-48 overflow-y-auto">
+              <div className="grid grid-cols-4 gap-1.5">
+                {images.map((img, i) => {
+                  const isUrl = img.startsWith("http")
+                  const displayName = isUrl ? `image-${i + 1}` : img
+                  const isSelected = selectedImages.includes(displayName)
+                  return (
+                    <button
+                      key={i}
+                      onClick={() => toggleImage(displayName)}
+                      className={`relative aspect-square rounded-lg overflow-hidden border-2 transition-all ${
+                        isSelected ? "border-primary ring-2 ring-primary/30" : "border-transparent hover:border-border"
+                      }`}
+                    >
+                      {isUrl ? (
+                        <img src={img} alt="" className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = "none" }} />
+                      ) : (
+                        <div className="w-full h-full bg-secondary flex items-center justify-center">
+                          <span className="text-[8px] text-muted-foreground truncate px-1">{img}</span>
+                        </div>
+                      )}
+                      {isSelected && (
+                        <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
+                          <CheckCircle2 className="w-4 h-4 text-primary" />
+                        </div>
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Edit History */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-3">
+            <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Edit History</h3>
+            {editHistory.length === 0 && (
+              <p className="text-xs text-muted-foreground">No edits yet. Send an instruction above.</p>
+            )}
+            {editHistory.map((edit, i) => (
+              <div key={i} className="p-3 rounded-xl bg-secondary/30 border border-border/50 space-y-1">
+                <p className="text-sm text-foreground">{edit.instruction}</p>
+                <div className="flex items-center gap-2">
+                  <Clock className="w-3 h-3 text-muted-foreground" />
+                  <span className="text-[10px] text-muted-foreground">
+                    {new Date(edit.timestamp).toLocaleTimeString()} — {edit.updatedFiles.join(", ")}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* File List */}
+          <div className="p-4 border-t border-border/50 max-h-40 overflow-y-auto">
+            <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+              Project Files ({files.length})
+            </h3>
+            <div className="space-y-0.5">
+              {files.map((f) => (
+                <div key={f.path} className="text-xs text-muted-foreground font-mono truncate">
+                  {f.path}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Right Panel - Live Preview */}
+        <div className="flex-1 bg-secondary/20">
+          {vercelUrl ? (
+            <iframe
+              key={iframeKey}
+              src={vercelUrl}
+              className="w-full h-full border-0"
+              title="Live site preview"
+            />
+          ) : (
+            <div className="h-full flex items-center justify-center text-muted-foreground">
+              <div className="text-center space-y-2">
+                <p className="text-sm">No deployment URL found.</p>
+                <p className="text-xs">Deploy your project from the main page first.</p>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}

@@ -10,8 +10,10 @@ import {
   CheckCircle2,
   RotateCcw,
   AlertCircle,
+  Pencil,
 } from "lucide-react"
 import { useProjectStore } from "@/lib/store"
+import Link from "next/link"
 
 export function ActionBar() {
   const {
@@ -174,6 +176,17 @@ export function ActionBar() {
           )}
           {isDeploying ? "Deploying..." : deploymentUrl ? "Deployed to Vercel" : "Deploy to Vercel"}
         </button>
+
+        {/* Open Editor */}
+        {deploymentUrl && (
+          <Link
+            href={`/editor/${projectName || defaultProjectName}`}
+            className="px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 bg-secondary text-foreground hover:bg-secondary/80 transition-colors"
+          >
+            <Pencil className="w-4 h-4" />
+            Open Editor
+          </Link>
+        )}
 
         <div className="flex-1" />
 

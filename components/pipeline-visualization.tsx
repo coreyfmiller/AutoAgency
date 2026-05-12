@@ -1,19 +1,18 @@
 "use client"
 
 import { motion } from "framer-motion"
-import { Search, Code2, GitBranch, Rocket, CheckCircle2 } from "lucide-react"
+import { Search, Code2, Rocket, CheckCircle2 } from "lucide-react"
 import { useProjectStore, type PipelineStep } from "@/lib/store"
 
 const steps = [
   { id: 1, name: "Audit", icon: Search, key: "auditing" as const },
   { id: 2, name: "Review", icon: CheckCircle2, key: "reviewing" as const },
   { id: 3, name: "Generate", icon: Code2, key: "generating" as const },
-  { id: 4, name: "Deploy", icon: Rocket, key: "deploying" as const },
-  { id: 5, name: "Live", icon: GitBranch, key: "complete" as const },
+  { id: 4, name: "Workspace", icon: Rocket, key: "workspace" as const },
 ]
 
 function getStepStatus(stepKey: string, currentStep: PipelineStep) {
-  const order: PipelineStep[] = ["idle", "auditing", "reviewing", "generating", "deploying", "complete"]
+  const order: PipelineStep[] = ["idle", "auditing", "reviewing", "generating", "workspace"]
   const stepIndex = order.indexOf(stepKey as PipelineStep)
   const currentIndex = order.indexOf(currentStep)
 

@@ -5,13 +5,15 @@ import { AutogenLogo } from "@/components/autogen-logo"
 import { UrlInput } from "@/components/url-input"
 import { PipelineVisualization } from "@/components/pipeline-visualization"
 import { AuditReview } from "@/components/audit-review"
-import { DeploymentSuccess } from "@/components/deployment-success"
+import { Workspace } from "@/components/workspace"
 import { useProjectStore } from "@/lib/store"
 import { Settings, Bell, User, AlertCircle } from "lucide-react"
 import { motion } from "framer-motion"
 
 export default function Dashboard() {
   const { currentStep, error, reset } = useProjectStore()
+
+  const isInWorkspace = currentStep === "workspace"
 
   return (
     <div className="min-h-screen relative overflow-hidden">
@@ -22,7 +24,7 @@ export default function Dashboard() {
       <div className="relative z-10">
         {/* Header */}
         <header className="border-b border-border/50 backdrop-blur-sm">
-          <div className="max-w-[1600px] mx-auto px-6 py-4 flex items-center justify-between">
+          <div className="max-w-[1800px] mx-auto px-6 py-4 flex items-center justify-between">
             <AutogenLogo />
 
             <nav className="hidden md:flex items-center gap-8">
@@ -75,25 +77,27 @@ export default function Dashboard() {
         </header>
 
         {/* Main content area */}
-        <main className="max-w-[1600px] mx-auto px-6 py-8 space-y-8">
-          {/* URL Input Section */}
-          <motion.section
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="text-center space-y-6"
-          >
-            <div className="space-y-2">
-              <h2 className="text-3xl font-bold text-foreground tracking-tight text-balance">
-                Automated Web Design Command Center
-              </h2>
-              <p className="text-muted-foreground max-w-xl mx-auto text-balance">
-                Enter any website URL to audit, extract brand assets, and automatically rebuild
-                with modern design patterns.
-              </p>
-            </div>
-            <UrlInput />
-          </motion.section>
+        <main className={`${isInWorkspace ? "max-w-[1800px]" : "max-w-[1600px]"} mx-auto px-6 py-8 space-y-8`}>
+          {/* URL Input Section - hide in workspace */}
+          {!isInWorkspace && (
+            <motion.section
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              className="text-center space-y-6"
+            >
+              <div className="space-y-2">
+                <h2 className="text-3xl font-bold text-foreground tracking-tight text-balance">
+                  Automated Web Design Command Center
+                </h2>
+                <p className="text-muted-foreground max-w-xl mx-auto text-balance">
+                  Enter any website URL to audit, extract brand assets, and automatically rebuild
+                  with modern design patterns.
+                </p>
+              </div>
+              <UrlInput />
+            </motion.section>
+          )}
 
           {/* Error Display */}
           {currentStep === "error" && error && (
@@ -103,7 +107,7 @@ export default function Dashboard() {
               className="glass-panel rounded-2xl p-6 border border-red-500/30"
             >
               <div className="flex items-center gap-3">
-                <AlertCircle className="w-5 h-5 text-red-500" />
+                <AlertCircle className="w-5 h-5 text-red-500 shrink-0" />
                 <div className="flex-1">
                   <p className="text-sm font-medium text-foreground">Something went wrong</p>
                   <p className="text-sm text-muted-foreground">{error}</p>
@@ -118,47 +122,51 @@ export default function Dashboard() {
             </motion.div>
           )}
 
-          {/* Pipeline Visualization */}
-          <motion.section
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-          >
-            <PipelineVisualization />
-          </motion.section>
+          {/* Pipeline Visualization - hide in workspace */}
+          {!isInWorkspace && (
+            <motion.section
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+            >
+              <PipelineVisualization />
+            </motion.section>
+          )}
 
           {/* Audit Review (appears after audit completes) */}
-          <AuditReview />
+          {!isInWorkspace && <AuditReview />}
 
-          {/* Deployment Success */}
-          <DeploymentSuccess />
+          {/* Workspace (appears after generation) */}
+          <Workspace />
         </main>
 
-        {/* Footer */}
-        <footer className="border-t border-border/50 backdrop-blur-sm mt-12">
-          <div className="max-w-[1600px] mx-auto px-6 py-6 flex flex-col md:flex-row items-center justify-between gap-4">
-            <p className="text-sm text-muted-foreground">
-              AutoAgency Command Center v2.0
-            </p>
-            <div className="flex items-center gap-6">
-              <span className="text-xs text-muted-foreground flex items-center gap-2">
-                <motion.span
-                  className="w-2 h-2 rounded-full bg-[oklch(0.7_0.2_150)]"
-                  animate={{
-                    scale: [1, 1.3, 1],
-                    opacity: [1, 0.6, 1],
-                  }}
-                  transition={{
-                    duration: 1,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                  }}
-                />
-                All systems operational
-              </span>
+        {/* Footer - hide in workspace */}
+        {!isInWorkspace && (
+          <footer className="border-t border-border/50 backdrop-blur-sm mt-12">
+            <div className="max-w-[1600px] mx-auto px-6 py-6 flex flex-col md:flex-row items-center justify-between gap-4">
+              <p className="text-sm text-muted-foreground">
+                AutoAgency Command Center v2.0
+              </p>
+              <div className="flex items-center gap-6">
+                <span className="text-xs text-muted-foreground flex items-center gap-2">
+                  <motion.span
+                    className="w-2 h-2 rounded-full bg-[oklch(0.7_0.2_150)]"
+                    animate={{
+                      scale: [1, 1.3, 1],
+                      opacity: [1, 0.6, 1],
+                    }}
+                    transition={{
+                      duration: 1,
+                      repeat: Infinity,
+                      ease: "easeInOut",
+                    }}
+                  />
+                  All systems operational
+                </span>
+              </div>
             </div>
-          </div>
-        </footer>
+          </footer>
+        )}
       </div>
     </div>
   )

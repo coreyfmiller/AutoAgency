@@ -5,14 +5,9 @@ import { motion } from "framer-motion"
 import {
   Send,
   Loader2,
-  Github,
-  Rocket,
-  ExternalLink,
-  CheckCircle2,
   Image as ImageIcon,
-  RotateCcw,
   X,
-  AlertCircle,
+  CheckCircle2,
 } from "lucide-react"
 import { useProjectStore } from "@/lib/store"
 
@@ -25,27 +20,13 @@ export function Workspace() {
     sendEdit,
     isEditing,
     editHistory,
-    pushToGitHub,
-    deployToVercel,
-    isPushingToGit,
-    isDeploying,
-    githubUrl,
-    deploymentUrl,
-    error,
-    reset,
   } = useProjectStore()
 
   const [editMessage, setEditMessage] = useState("")
-  const [projectName, setProjectName] = useState("")
   const [selectedImages, setSelectedImages] = useState<string[]>([])
   const [showMediaPanel, setShowMediaPanel] = useState(false)
 
   if (currentStep !== "workspace") return null
-
-  const defaultProjectName = auditResult?.analysis.businessName
-    ?.toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/-+/g, "-") || "my-project"
 
   const handleSendEdit = async () => {
     if (!editMessage.trim() && selectedImages.length === 0) return
@@ -63,16 +44,6 @@ export function Workspace() {
     setEditMessage("")
     setSelectedImages([])
     await sendEdit(message)
-  }
-
-  const handlePushToGit = async () => {
-    const name = projectName || defaultProjectName
-    await pushToGitHub(name)
-  }
-
-  const handleDeploy = async () => {
-    const name = projectName || defaultProjectName
-    await deployToVercel(name)
   }
 
   const toggleImageSelection = (url: string) => {
@@ -188,101 +159,9 @@ export function Workspace() {
         )}
       </div>
 
-      {/* Action Bar */}
-      <div className="glass-panel rounded-2xl p-4 space-y-3">
-        {/* Status Messages */}
-        {githubUrl && !deploymentUrl && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-green-500/10 border border-green-500/20"
-          >
-            <CheckCircle2 className="w-4 h-4 text-green-500" />
-            <span className="text-sm text-green-600 font-medium">
-              Pushed to GitHub successfully!
-            </span>
-            <a
-              href={githubUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-sm text-green-600 underline flex items-center gap-1 ml-auto"
-            >
-              View repo <ExternalLink className="w-3 h-3" />
-            </a>
-          </motion.div>
-        )}
-
-        {deploymentUrl && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-green-500/10 border border-green-500/20"
-          >
-            <CheckCircle2 className="w-4 h-4 text-green-500" />
-            <span className="text-sm text-green-600 font-medium">
-              Deployed to Vercel!
-            </span>
-            <div className="flex items-center gap-3 ml-auto">
-              <a
-                href={githubUrl!}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm text-green-600 underline flex items-center gap-1"
-              >
-                Repo <ExternalLink className="w-3 h-3" />
-              </a>
-              <a
-                href={deploymentUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm text-green-600 underline flex items-center gap-1"
-              >
-                Live site <ExternalLink className="w-3 h-3" />
-              </a>
-            </div>
-          </motion.div>
-        )}
-
-        {isPushingToGit && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-500/10 border border-blue-500/20"
-          >
-            <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />
-            <span className="text-sm text-blue-600 font-medium">
-              Creating repo & uploading images... This may take a minute.
-            </span>
-          </motion.div>
-        )}
-
-        {isDeploying && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-500/10 border border-blue-500/20"
-          >
-            <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />
-            <span className="text-sm text-blue-600 font-medium">
-              Deploying to Vercel...
-            </span>
-          </motion.div>
-        )}
-
-        {error && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/20"
-          >
-            <AlertCircle className="w-4 h-4 text-red-500 shrink-0" />
-            <span className="text-sm text-red-600 font-medium">
-              {error}
-            </span>
-          </motion.div>
-        )}
-
-        <div className="flex items-center gap-3 flex-wrap">
+      {/* Edit Panel */}
+      <div className="glass-panel rounded-2xl p-4">
+        <div className="flex items-center gap-3 mb-3">
           {/* Media toggle */}
           <button
             onClick={() => setShowMediaPanel(!showMediaPanel)}
@@ -295,73 +174,8 @@ export function Workspace() {
             <ImageIcon className="w-4 h-4" />
             Media
           </button>
-
-          <div className="w-px h-8 bg-border" />
-
-          {/* Project name input */}
-          <input
-            type="text"
-            value={projectName}
-            onChange={(e) => setProjectName(e.target.value)}
-            placeholder={defaultProjectName}
-            className="px-3 py-2 rounded-xl bg-secondary/50 border border-border/50 text-foreground placeholder:text-muted-foreground text-sm outline-none focus:border-primary/50 w-48"
-          />
-
-          {/* Push to GitHub */}
-          <button
-            onClick={handlePushToGit}
-            disabled={isPushingToGit || !!githubUrl}
-            className={`px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-colors ${
-              githubUrl
-                ? "bg-green-500/10 text-green-600"
-                : "bg-secondary text-foreground hover:bg-secondary/80"
-            } disabled:opacity-60`}
-          >
-            {isPushingToGit ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : githubUrl ? (
-              <CheckCircle2 className="w-4 h-4" />
-            ) : (
-              <Github className="w-4 h-4" />
-            )}
-            {githubUrl ? "Pushed" : "Push to GitHub"}
-          </button>
-
-          {/* Deploy to Vercel */}
-          <button
-            onClick={handleDeploy}
-            disabled={isDeploying || !githubUrl || !!deploymentUrl}
-            className={`px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-colors ${
-              deploymentUrl
-                ? "bg-green-500/10 text-green-600"
-                : "bg-gradient-to-r from-primary to-accent text-primary-foreground"
-            } disabled:opacity-60`}
-          >
-            {isDeploying ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : deploymentUrl ? (
-              <CheckCircle2 className="w-4 h-4" />
-            ) : (
-              <Rocket className="w-4 h-4" />
-            )}
-            {deploymentUrl ? "Deployed" : "Deploy to Vercel"}
-          </button>
-
-          <div className="flex-1" />
-
-          {/* Start over */}
-          <button
-            onClick={reset}
-            className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
-          >
-            <RotateCcw className="w-3 h-3" />
-            New project
-          </button>
         </div>
-      </div>
 
-      {/* Edit Panel */}
-      <div className="glass-panel rounded-2xl p-4">
         {/* Edit history */}
         {editHistory.length > 0 && (
           <div className="mb-3 space-y-2 max-h-32 overflow-y-auto">

@@ -4,6 +4,7 @@ import { ParticleField } from "@/components/particle-field"
 import { AutogenLogo } from "@/components/autogen-logo"
 import { UrlInput } from "@/components/url-input"
 import { PipelineVisualization } from "@/components/pipeline-visualization"
+import { ActionBar } from "@/components/action-bar"
 import { AuditReview } from "@/components/audit-review"
 import { Workspace } from "@/components/workspace"
 import { useProjectStore } from "@/lib/store"
@@ -129,6 +130,9 @@ export default function Dashboard() {
           >
             <PipelineVisualization />
           </motion.section>
+
+          {/* Action Bar - under pipeline in workspace */}
+          <ActionBar />
 
           {/* Audit Review (appears after audit completes) */}
           {!isInWorkspace && <AuditReview />}

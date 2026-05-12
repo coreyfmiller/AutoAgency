@@ -202,6 +202,18 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     set({ isPushingToGit: true });
 
     try {
+      // Build image list with classifications from the analysis
+      const images = auditResult.scraped.images.map((url) => {
+        const classification = auditResult.analysis.allImages?.find(
+          (ai) => ai.url === url
+        );
+        return {
+          url,
+          type: classification?.type || "other",
+          description: classification?.description || "",
+        };
+      });
+
       const response = await fetch("/api/github", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -209,6 +221,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
           projectName,
           files: generatedFiles,
           brandName: auditResult.analysis.businessName,
+          images,
         }),
       });
 

@@ -85,6 +85,7 @@ The v0 prompt should:
 - NOT ask for placeholder text (use their real content)
 - Explicitly say "Use placeholder images for gallery/team/other sections — real images will be added later"
 - Based on the business type, include 1-2 sentences describing the design style v0 should use (layout approach, typography feel, visual weight, section style, symmetry vs asymmetry). For example: contractors get bold/masculine designs with large imagery; law firms get clean symmetrical layouts; restaurants get warm inviting designs with dark backgrounds.
+- ALWAYS include these structural requirements: "Include a sticky navigation header and a footer."
 
 Respond ONLY with valid JSON (no markdown fences):
 {

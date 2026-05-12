@@ -156,16 +156,14 @@ export async function POST(request: NextRequest) {
     }
 
     if (!fileNames.has("tailwind.config.ts") && !fileNames.has("tailwind.config.js")) {
-      scaffoldFiles.push({
-        name: "tailwind.config.ts",
-        content: `import type { Config } from "tailwindcss"\n\nconst config: Config = {\n  darkMode: ["class"],\n  content: [\n    "./pages/**/*.{ts,tsx}",\n    "./components/**/*.{ts,tsx}",\n    "./app/**/*.{ts,tsx}",\n    "./src/**/*.{ts,tsx}",\n  ],\n  theme: {\n    extend: {},\n  },\n  plugins: [],\n}\n\nexport default config\n`,
-      });
+      // Tailwind v4 doesn't need a config file — config is in CSS
+      // Only add if v0 didn't provide one
     }
 
     if (!fileNames.has("postcss.config.mjs") && !fileNames.has("postcss.config.js")) {
       scaffoldFiles.push({
         name: "postcss.config.mjs",
-        content: `/** @type {import('postcss-load-config').Config} */\nconst config = {\n  plugins: {\n    tailwindcss: {},\n  },\n}\n\nexport default config\n`,
+        content: `/** @type {import('postcss-load-config').Config} */\nconst config = {\n  plugins: {\n    "@tailwindcss/postcss": {},\n  },\n}\n\nexport default config\n`,
       });
     }
 
@@ -193,7 +191,8 @@ export async function POST(request: NextRequest) {
             react: "^18",
             "react-dom": "^18",
             "lucide-react": "^0.400",
-            tailwindcss: "^3.4",
+            tailwindcss: "^4",
+            "@tailwindcss/postcss": "^4",
             "class-variance-authority": "^0.7",
             clsx: "^2",
             "tailwind-merge": "^2",

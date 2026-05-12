@@ -117,8 +117,102 @@ export async function POST(request: NextRequest) {
     // Wait for GitHub to initialize
     await new Promise((r) => setTimeout(r, 2000));
 
-    // Push all generated code files
-    for (const file of files) {
+    // Determine which scaffold files are needed (only add if v0 didn't provide them)
+    const fileNames = new Set(files.map((f: { name: string }) => f.name));
+    const scaffoldFiles: { name: string; content: string }[] = [];
+
+    if (!fileNames.has("next.config.mjs") && !fileNames.has("next.config.js") && !fileNames.has("next.config.ts")) {
+      scaffoldFiles.push({
+        name: "next.config.mjs",
+        content: `/** @type {import('next').NextConfig} */\nconst nextConfig = {\n  images: {\n    unoptimized: true,\n  },\n}\n\nexport default nextConfig\n`,
+      });
+    }
+
+    if (!fileNames.has("tsconfig.json")) {
+      scaffoldFiles.push({
+        name: "tsconfig.json",
+        content: JSON.stringify({
+          compilerOptions: {
+            target: "ES2017",
+            lib: ["dom", "dom.iterable", "esnext"],
+            allowJs: true,
+            skipLibCheck: true,
+            strict: true,
+            noEmit: true,
+            esModuleInterop: true,
+            module: "esnext",
+            moduleResolution: "bundler",
+            resolveJsonModule: true,
+            isolatedModules: true,
+            jsx: "preserve",
+            incremental: true,
+            plugins: [{ name: "next" }],
+            paths: { "@/*": ["./*"] },
+          },
+          include: ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+          exclude: ["node_modules"],
+        }, null, 2) + "\n",
+      });
+    }
+
+    if (!fileNames.has("tailwind.config.ts") && !fileNames.has("tailwind.config.js")) {
+      scaffoldFiles.push({
+        name: "tailwind.config.ts",
+        content: `import type { Config } from "tailwindcss"\n\nconst config: Config = {\n  darkMode: ["class"],\n  content: [\n    "./pages/**/*.{ts,tsx}",\n    "./components/**/*.{ts,tsx}",\n    "./app/**/*.{ts,tsx}",\n    "./src/**/*.{ts,tsx}",\n  ],\n  theme: {\n    extend: {},\n  },\n  plugins: [],\n}\n\nexport default config\n`,
+      });
+    }
+
+    if (!fileNames.has("postcss.config.mjs") && !fileNames.has("postcss.config.js")) {
+      scaffoldFiles.push({
+        name: "postcss.config.mjs",
+        content: `/** @type {import('postcss-load-config').Config} */\nconst config = {\n  plugins: {\n    tailwindcss: {},\n  },\n}\n\nexport default config\n`,
+      });
+    }
+
+    if (!fileNames.has(".gitignore")) {
+      scaffoldFiles.push({
+        name: ".gitignore",
+        content: "node_modules\n.next\n.env*.local\n",
+      });
+    }
+
+    if (!fileNames.has("package.json")) {
+      scaffoldFiles.push({
+        name: "package.json",
+        content: JSON.stringify({
+          name: repoName,
+          version: "0.1.0",
+          private: true,
+          scripts: {
+            dev: "next dev",
+            build: "next build",
+            start: "next start",
+          },
+          dependencies: {
+            next: "^14",
+            react: "^18",
+            "react-dom": "^18",
+            "lucide-react": "^0.400",
+            tailwindcss: "^3.4",
+            "class-variance-authority": "^0.7",
+            clsx: "^2",
+            "tailwind-merge": "^2",
+            autoprefixer: "^10",
+            postcss: "^8",
+            typescript: "^5",
+            "@types/node": "^20",
+            "@types/react": "^18",
+            "@types/react-dom": "^18",
+          },
+        }, null, 2) + "\n",
+      });
+    }
+
+    // Combine v0 files + scaffold files
+    const allFiles = [...files, ...scaffoldFiles];
+
+    // Push all files
+    for (const file of allFiles) {
       if (!file.name || !file.content) continue;
 
       const res = await fetch(

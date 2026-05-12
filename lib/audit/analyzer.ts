@@ -71,17 +71,19 @@ INSTRUCTIONS:
 1. Identify the business name, type, tagline, and what they do.
 2. Extract their real headline, services, CTA text, phone number, address.
 3. Classify each image as: logo, hero, team, product, testimonial, gallery, icon, or other.
-4. Pick the best logo URL and best hero/banner image URL.
-5. Write a concise v0 prompt (under 1500 chars) that will generate a modern rebuild of this site using their REAL business name, tagline, services, and content. Include the logo and hero image URLs in the prompt.
+4. Pick the SINGLE best logo URL and SINGLE best hero/banner image URL.
+5. Write a concise v0 prompt (under 1500 chars) that will generate a modern rebuild of this site using their REAL business name, tagline, services, and content. Include ONLY the logo URL and hero image URL.
 
 The v0 prompt should:
 - Mention the business name and what they do
 - Include their actual headline/tagline
 - List their real nav links and services
-- Reference the logo and hero image URLs directly
+- Reference ONLY the logo URL and hero image URL (no other images)
+- Let v0 generate its own placeholder images for galleries, team sections, testimonials, etc.
 - Ask for a modern, responsive design with appropriate sections for their business type
 - NOT include color codes (let v0 pick a modern palette)
 - NOT ask for placeholder text (use their real content)
+- Explicitly say "Use placeholder images for gallery/team/other sections — real images will be added later"
 
 Respond ONLY with valid JSON (no markdown fences):
 {

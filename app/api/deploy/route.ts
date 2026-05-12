@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
         },
         buildCommand: "next build",
         resourceConfig: {
-          buildMachineType: "ELASTIC",
+          buildMachineType: "elastic",
         },
       }),
     });
@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
           buildCommand: "next build",
           framework: "nextjs",
           resourceConfig: {
-            buildMachineType: "ELASTIC",
+            buildMachineType: "elastic",
           },
         },
       }),

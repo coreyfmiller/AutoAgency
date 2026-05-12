@@ -1,4 +1,4 @@
-import { chromium, type Browser, type Page } from "playwright";
+import { chromium, type Browser } from "playwright-core";
 import * as cheerio from "cheerio";
 
 export interface ScrapedData {
@@ -34,7 +34,17 @@ export async function scrapeWebsite(url: string): Promise<ScrapedData> {
   let browser: Browser | null = null;
 
   try {
-    browser = await chromium.launch({ headless: true });
+    // Connect to Browserless.io for hosted Chromium
+    const browserlessKey = process.env.BROWSERLESS_API_KEY;
+    if (browserlessKey) {
+      browser = await chromium.connectOverCDP(
+        `wss://production-sfo.browserless.io/chromium/playwright?token=${browserlessKey}`
+      );
+    } else {
+      // Fallback to local Chromium for development
+      browser = await chromium.launch({ headless: true });
+    }
+
     const context = await browser.newContext({
       viewport: { width: 1440, height: 900 },
       userAgent:

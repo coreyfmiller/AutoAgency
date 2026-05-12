@@ -12,6 +12,7 @@ import {
   Image as ImageIcon,
   RotateCcw,
   X,
+  AlertCircle,
 } from "lucide-react"
 import { useProjectStore } from "@/lib/store"
 
@@ -30,6 +31,7 @@ export function Workspace() {
     isDeploying,
     githubUrl,
     deploymentUrl,
+    error,
     reset,
   } = useProjectStore()
 
@@ -263,6 +265,19 @@ export function Workspace() {
             <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />
             <span className="text-sm text-blue-600 font-medium">
               Deploying to Vercel...
+            </span>
+          </motion.div>
+        )}
+
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/20"
+          >
+            <AlertCircle className="w-4 h-4 text-red-500 shrink-0" />
+            <span className="text-sm text-red-600 font-medium">
+              {error}
             </span>
           </motion.div>
         )}

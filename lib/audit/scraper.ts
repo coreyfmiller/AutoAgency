@@ -38,18 +38,22 @@ export async function scrapeWebsite(url: string): Promise<ScrapedData> {
     const browserlessKey = process.env.BROWSERLESS_API_KEY;
     if (browserlessKey) {
       browser = await chromium.connectOverCDP(
-        `wss://production-sfo.browserless.io/chromium/playwright?token=${browserlessKey}`
+        `wss://production-sfo.browserless.io/chromium?token=${browserlessKey}`
       );
     } else {
       // Fallback to local Chromium for development
       browser = await chromium.launch({ headless: true });
     }
 
-    const context = await browser.newContext({
-      viewport: { width: 1440, height: 900 },
-      userAgent:
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    });
+    // Use existing context from CDP connection, or create new one
+    const contexts = browser.contexts();
+    const context = contexts.length > 0
+      ? contexts[0]
+      : await browser.newContext({
+          viewport: { width: 1440, height: 900 },
+          userAgent:
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        });
     const page = await context.newPage();
 
     await page.goto(url, { waitUntil: "networkidle", timeout: 30000 });

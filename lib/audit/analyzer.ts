@@ -28,7 +28,7 @@ export async function analyzeWithGemini(
   scrapedData: ScrapedData
 ): Promise<AnalysisResult> {
   const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
   // Prepare the screenshot for vision analysis
   const screenshotBase64 = scrapedData.screenshot
@@ -129,7 +129,7 @@ export async function describeImages(
   if (imageUrls.length === 0) return [];
 
   const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
   const descriptions: { url: string; description: string }[] = [];
 

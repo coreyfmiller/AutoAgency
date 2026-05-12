@@ -318,7 +318,7 @@ export const useProjectStore = create<ProjectState>()(
         githubUrl: state.githubUrl,
         deploymentUrl: state.deploymentUrl,
         editHistory: state.editHistory,
-        error: null, // Don't persist errors
+        error: state.error, // Persist error so it shows after refresh
       }),
     }
   )

@@ -296,7 +296,7 @@ export const useProjectStore = create<ProjectState>()(
         }),
     }),
     {
-      name: "clientfactory-project",
+      name: "refreshfactory-project",
       partialize: (state) => ({
         // Persist everything except transient loading states and the screenshot
         currentStep: state.currentStep,

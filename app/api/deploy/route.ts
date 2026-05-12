@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
 
     // Trigger a build by pushing a deploy trigger file to the repo
     // This forces Vercel to pick up the repo and start building
-    const triggerContent = `Deployed via ClientFactory at ${new Date().toISOString()}`;
+    const triggerContent = `Deployed via RefreshFactory.ai at ${new Date().toISOString()}`;
     
     await fetch(
       `https://api.github.com/repos/${repoFullName}/contents/.vercel-trigger`,

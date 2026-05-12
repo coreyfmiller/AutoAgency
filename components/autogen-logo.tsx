@@ -84,7 +84,7 @@ export function AutogenLogo() {
       </div>
       <div>
         <h1 className="text-xl font-semibold tracking-tight text-foreground">
-          Client<span className="text-primary">Factory</span>
+          Refresh<span className="text-primary">Factory</span><span className="text-muted-foreground text-sm">.ai</span>
         </h1>
         <p className="text-xs text-muted-foreground font-mono">v2.0</p>
       </div>

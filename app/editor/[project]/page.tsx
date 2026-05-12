@@ -48,7 +48,7 @@ export default function EditorPage() {
 
   // Load project data from localStorage
   useEffect(() => {
-    const stored = localStorage.getItem("clientfactory-project")
+    const stored = localStorage.getItem("refreshfactory-project")
     if (stored) {
       try {
         const data = JSON.parse(stored)

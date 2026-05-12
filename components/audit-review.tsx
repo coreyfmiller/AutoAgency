@@ -3,15 +3,14 @@
 import { useState } from "react"
 import { motion } from "framer-motion"
 import {
-  Palette,
-  Type,
   Image as ImageIcon,
   Globe,
   Sparkles,
   Loader2,
-  Edit3,
   Eye,
-  Rocket,
+  Building2,
+  Star,
+  FileText,
 } from "lucide-react"
 import { useProjectStore } from "@/lib/store"
 
@@ -23,25 +22,19 @@ export function AuditReview() {
     setCustomInstructions,
     startGeneration,
     generatedCode,
-    startDeployment,
+    demoUrl,
   } = useProjectStore()
 
   const [showPrompt, setShowPrompt] = useState(false)
-  const [projectName, setProjectName] = useState("")
 
-  if (!auditResult || (currentStep !== "reviewing" && currentStep !== "generating" && currentStep !== "deploying" && currentStep !== "complete")) {
+  if (!auditResult || currentStep === "idle" || currentStep === "auditing") {
     return null
   }
 
-  const { scraped, analysis, prompt } = auditResult
+  const { scraped, analysis } = auditResult
 
   const handleGenerate = async () => {
     await startGeneration()
-  }
-
-  const handleDeploy = async () => {
-    const name = projectName || analysis.brandName.toLowerCase().replace(/\s+/g, "-") + "-rebuild"
-    await startDeployment(name)
   }
 
   return (
@@ -51,126 +44,141 @@ export function AuditReview() {
       transition={{ duration: 0.5 }}
       className="space-y-6"
     >
-      {/* Audit Results Header */}
+      {/* Business Identity */}
       <div className="glass-panel rounded-2xl p-6">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
-            <Globe className="w-5 h-5 text-primary" />
-            Audit Results: {analysis.brandName}
+            <Building2 className="w-5 h-5 text-primary" />
+            {analysis.businessName}
           </h2>
-          <span className="text-sm text-muted-foreground px-3 py-1 rounded-full bg-secondary">
-            {analysis.visualStyle}
+          <span className="text-sm text-muted-foreground px-3 py-1 rounded-full bg-secondary capitalize">
+            {analysis.businessType}
           </span>
         </div>
 
-        {/* Screenshot Preview */}
-        {scraped.screenshot && (
-          <div className="mb-6 rounded-xl overflow-hidden border border-border/50">
-            <img
-              src={scraped.screenshot}
-              alt="Website screenshot"
-              className="w-full h-48 object-cover object-top"
-            />
-          </div>
-        )}
-
-        {/* Brand DNA Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {/* Colors */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Business Info */}
           <div className="space-y-3">
-            <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-              <Palette className="w-4 h-4" />
-              Color Palette
+            {analysis.tagline && (
+              <div>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide">Tagline</p>
+                <p className="text-sm text-foreground font-medium">{analysis.tagline}</p>
+              </div>
+            )}
+            <div>
+              <p className="text-xs text-muted-foreground uppercase tracking-wide">Headline</p>
+              <p className="text-sm text-foreground font-medium">{analysis.headline}</p>
             </div>
-            <div className="flex flex-wrap gap-2">
-              {Object.entries(analysis.colorPalette).map(([name, hex]) => (
-                <div key={name} className="flex items-center gap-2">
-                  <div
-                    className="w-8 h-8 rounded-lg border border-border/50 shadow-sm"
-                    style={{ backgroundColor: hex }}
-                  />
-                  <div>
-                    <p className="text-xs font-medium text-foreground capitalize">{name}</p>
-                    <p className="text-xs text-muted-foreground font-mono">{hex}</p>
+            {analysis.subheadline && (
+              <div>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide">Subheadline</p>
+                <p className="text-sm text-foreground">{analysis.subheadline}</p>
+              </div>
+            )}
+            {analysis.services.length > 0 && (
+              <div>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide">Services</p>
+                <div className="flex flex-wrap gap-1.5 mt-1">
+                  {analysis.services.map((service, i) => (
+                    <span key={i} className="text-xs px-2 py-1 rounded-md bg-secondary text-foreground">
+                      {service}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {analysis.phoneNumber && (
+              <div>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide">Phone</p>
+                <p className="text-sm text-foreground">{analysis.phoneNumber}</p>
+              </div>
+            )}
+          </div>
+
+          {/* Key Images */}
+          <div className="space-y-3">
+            <p className="text-xs text-muted-foreground uppercase tracking-wide">Identified Assets</p>
+            <div className="grid grid-cols-2 gap-3">
+              {analysis.logoUrl && (
+                <div className="space-y-1">
+                  <div className="relative rounded-lg overflow-hidden border border-primary/30 bg-secondary/50 p-2 h-20 flex items-center justify-center">
+                    <img
+                      src={analysis.logoUrl}
+                      alt="Logo"
+                      className="max-h-full max-w-full object-contain"
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = "none" }}
+                    />
+                    <span className="absolute top-1 right-1 text-[10px] px-1.5 py-0.5 rounded bg-primary text-primary-foreground font-medium">
+                      LOGO
+                    </span>
                   </div>
                 </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Typography */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-              <Type className="w-4 h-4" />
-              Typography
-            </div>
-            <div className="space-y-2">
-              <div className="pl-3 border-l-2 border-primary/30">
-                <p className="text-sm font-semibold text-foreground">{analysis.typography.primary}</p>
-                <p className="text-xs text-muted-foreground">Primary</p>
-              </div>
-              <div className="pl-3 border-l-2 border-accent/30">
-                <p className="text-sm font-medium text-foreground">{analysis.typography.secondary}</p>
-                <p className="text-xs text-muted-foreground">Secondary</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Images */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-              <ImageIcon className="w-4 h-4" />
-              Key Images ({scraped.images.length})
-            </div>
-            <div className="flex gap-2 overflow-x-auto">
-              {scraped.images.slice(0, 4).map((img, i) => (
-                <img
-                  key={i}
-                  src={img}
-                  alt={`Asset ${i + 1}`}
-                  className="w-14 h-14 rounded-lg object-cover border border-border/50"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).style.display = "none"
-                  }}
-                />
-              ))}
-            </div>
-          </div>
-
-          {/* Structure */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-              <Globe className="w-4 h-4" />
-              Structure
-            </div>
-            <div className="space-y-1">
-              <p className="text-xs text-muted-foreground">
-                Nav: {scraped.navLinks.slice(0, 5).join(", ")}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Sections: {analysis.suggestedSections.join(", ")}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Audience: {analysis.targetAudience}
-              </p>
+              )}
+              {analysis.heroImageUrl && (
+                <div className="space-y-1">
+                  <div className="relative rounded-lg overflow-hidden border border-accent/30 h-20">
+                    <img
+                      src={analysis.heroImageUrl}
+                      alt="Hero"
+                      className="w-full h-full object-cover"
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = "none" }}
+                    />
+                    <span className="absolute top-1 right-1 text-[10px] px-1.5 py-0.5 rounded bg-accent text-white font-medium">
+                      HERO
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Prompt Preview & Custom Instructions */}
+      {/* All Scraped Images */}
+      {scraped.images.length > 0 && (
+        <div className="glass-panel rounded-2xl p-6">
+          <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+            <ImageIcon className="w-5 h-5 text-primary" />
+            All Media ({scraped.images.length} images)
+          </h3>
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2">
+            {scraped.images.map((img, i) => {
+              const classification = analysis.allImages.find((ai) => ai.url === img)
+              return (
+                <div key={i} className="relative group">
+                  <div className="aspect-square rounded-lg overflow-hidden border border-border/50 bg-secondary/30">
+                    <img
+                      src={img}
+                      alt={`Asset ${i + 1}`}
+                      className="w-full h-full object-cover"
+                      onError={(e) => { (e.target as HTMLImageElement).src = "" }}
+                    />
+                  </div>
+                  {classification && classification.type !== "other" && (
+                    <span className="absolute bottom-0.5 left-0.5 text-[9px] px-1 py-0.5 rounded bg-black/70 text-white capitalize">
+                      {classification.type}
+                    </span>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* v0 Prompt & Generation */}
       <div className="glass-panel rounded-2xl p-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
-            <Edit3 className="w-5 h-5 text-primary" />
-            Generation Prompt
+            <FileText className="w-5 h-5 text-primary" />
+            v0 Generation Prompt
           </h3>
           <button
             onClick={() => setShowPrompt(!showPrompt)}
             className="text-sm text-primary hover:text-primary/80 flex items-center gap-1"
           >
             <Eye className="w-4 h-4" />
-            {showPrompt ? "Hide" : "Preview"} Prompt
+            {showPrompt ? "Hide" : "Preview"}
           </button>
         </div>
 
@@ -180,8 +188,8 @@ export function AuditReview() {
             animate={{ opacity: 1, height: "auto" }}
             className="mb-4"
           >
-            <pre className="text-xs text-muted-foreground bg-secondary/50 rounded-xl p-4 overflow-auto max-h-64 whitespace-pre-wrap font-mono">
-              {prompt.fullPrompt}
+            <pre className="text-xs text-muted-foreground bg-secondary/50 rounded-xl p-4 overflow-auto max-h-48 whitespace-pre-wrap font-mono">
+              {analysis.v0Prompt}
             </pre>
           </motion.div>
         )}
@@ -194,12 +202,12 @@ export function AuditReview() {
           <textarea
             value={customInstructions}
             onChange={(e) => setCustomInstructions(e.target.value)}
-            placeholder="e.g., Make it look more like Apple's website, Use a dark theme with neon accents, Add a pricing section"
-            className="w-full h-24 px-4 py-3 rounded-xl bg-secondary/50 border border-border/50 text-foreground placeholder:text-muted-foreground text-sm resize-none outline-none focus:border-primary/50 transition-colors"
+            placeholder="e.g., Use a dark theme, Make it look more premium, Add an animated hero section"
+            className="w-full h-20 px-4 py-3 rounded-xl bg-secondary/50 border border-border/50 text-foreground placeholder:text-muted-foreground text-sm resize-none outline-none focus:border-primary/50 transition-colors"
           />
         </div>
 
-        {/* Action Buttons */}
+        {/* Generate Button */}
         <div className="flex items-center gap-4 mt-6">
           {currentStep === "reviewing" && (
             <motion.button
@@ -216,44 +224,45 @@ export function AuditReview() {
           {currentStep === "generating" && (
             <div className="px-6 py-3 rounded-xl bg-secondary text-foreground font-medium text-sm flex items-center gap-2">
               <Loader2 className="w-4 h-4 animate-spin" />
-              Generating code...
-            </div>
-          )}
-
-          {(currentStep === "deploying" || generatedCode) && currentStep !== "complete" && (
-            <div className="flex items-center gap-4">
-              <input
-                type="text"
-                value={projectName}
-                onChange={(e) => setProjectName(e.target.value)}
-                placeholder={`${analysis.brandName.toLowerCase().replace(/\s+/g, "-")}-rebuild`}
-                className="px-4 py-3 rounded-xl bg-secondary/50 border border-border/50 text-foreground placeholder:text-muted-foreground text-sm outline-none focus:border-primary/50"
-              />
-              <motion.button
-                onClick={handleDeploy}
-                disabled={currentStep === "deploying"}
-                className="px-6 py-3 rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 text-white font-medium text-sm flex items-center gap-2 disabled:opacity-70"
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-              >
-                {currentStep === "deploying" ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Deploying...
-                  </>
-                ) : (
-                  <>
-                    <Rocket className="w-4 h-4" />
-                    Deploy to Vercel
-                  </>
-                )}
-              </motion.button>
+              Generating your site...
             </div>
           )}
         </div>
       </div>
 
-      {/* Generated Code Preview */}
+      {/* Demo Preview */}
+      {demoUrl && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="glass-panel rounded-2xl p-6"
+        >
+          <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+            <Star className="w-5 h-5 text-primary" />
+            Live Preview
+          </h3>
+          <div className="rounded-xl overflow-hidden border border-border/50">
+            <iframe
+              src={demoUrl}
+              className="w-full h-[600px]"
+              title="Generated site preview"
+            />
+          </div>
+          <div className="mt-4 flex items-center gap-3">
+            <a
+              href={demoUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm text-primary hover:text-primary/80 flex items-center gap-1"
+            >
+              <Globe className="w-4 h-4" />
+              Open in new tab
+            </a>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Generated Code */}
       {generatedCode && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -261,8 +270,8 @@ export function AuditReview() {
           className="glass-panel rounded-2xl p-6"
         >
           <h3 className="text-lg font-semibold text-foreground mb-4">Generated Code</h3>
-          <pre className="text-xs text-muted-foreground bg-secondary/50 rounded-xl p-4 overflow-auto max-h-96 whitespace-pre-wrap font-mono">
-            {generatedCode}
+          <pre className="text-xs text-muted-foreground bg-secondary/50 rounded-xl p-4 overflow-auto max-h-64 whitespace-pre-wrap font-mono">
+            {generatedCode.slice(0, 3000)}{generatedCode.length > 3000 ? "\n\n... (truncated)" : ""}
           </pre>
         </motion.div>
       )}

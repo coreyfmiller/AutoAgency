@@ -6,18 +6,20 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   try {
-    const { prompt, customInstructions } = await request.json();
+    const { v0Prompt, customInstructions } = await request.json();
 
-    if (!prompt) {
-      return NextResponse.json({ error: "Prompt is required" }, { status: 400 });
+    if (!v0Prompt) {
+      return NextResponse.json({ error: "v0Prompt is required" }, { status: 400 });
     }
 
+    // Append custom instructions if provided
     const finalPrompt = customInstructions
-      ? `${prompt}\n\n## Additional Instructions\n${customInstructions}`
-      : prompt;
+      ? `${v0Prompt}\n\nAdditional requirements: ${customInstructions}`
+      : v0Prompt;
+
+    console.log("[generate] Sending to v0:", finalPrompt.slice(0, 200) + "...");
 
     // Create a chat with v0 SDK
-    console.log("[generate] Creating v0 chat...");
     const chat = await v0.chats.create({
       message: finalPrompt,
     });

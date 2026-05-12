@@ -5,32 +5,25 @@ import type { AnalysisResult } from "./audit/analyzer";
 
 export type PipelineStep = "idle" | "auditing" | "reviewing" | "generating" | "deploying" | "complete" | "error";
 
+export interface ScrapedInfo {
+  url: string;
+  title: string;
+  description: string;
+  images: string[];
+  logos: string[];
+  fonts: string[];
+  colors: string[];
+  navLinks: string[];
+  headings: { level: number; text: string }[];
+  heroText: string | null;
+  heroSubtext: string | null;
+  socialLinks: string[];
+  screenshot: string | null;
+}
+
 export interface AuditResult {
-  scraped: {
-    url: string;
-    title: string;
-    description: string;
-    ogImage: string | null;
-    favicon: string | null;
-    logos: string[];
-    images: string[];
-    colors: string[];
-    fonts: string[];
-    headings: { level: number; text: string }[];
-    navLinks: string[];
-    heroText: string | null;
-    heroSubtext: string | null;
-    socialLinks: string[];
-    metaTags: Record<string, string>;
-    bodyText: string;
-    screenshot: string | null;
-  };
+  scraped: ScrapedInfo;
   analysis: AnalysisResult;
-  prompt: {
-    systemPrompt: string;
-    userPrompt: string;
-    fullPrompt: string;
-  };
 }
 
 export interface ProjectState {
@@ -45,6 +38,7 @@ export interface ProjectState {
   // Generation
   customInstructions: string;
   generatedCode: string | null;
+  demoUrl: string | null;
 
   // Deployment
   deploymentUrl: string | null;
@@ -66,6 +60,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   auditResult: null,
   customInstructions: "",
   generatedCode: null,
+  demoUrl: null,
   deploymentUrl: null,
   githubUrl: null,
 
@@ -116,7 +111,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          prompt: auditResult.prompt.fullPrompt,
+          v0Prompt: auditResult.analysis.v0Prompt,
           customInstructions,
         }),
       });
@@ -129,7 +124,8 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       const data = await response.json();
       set({
         generatedCode: data.generatedCode,
-        currentStep: "deploying",
+        demoUrl: data.demoUrl,
+        currentStep: "complete",
       });
     } catch (error) {
       set({
@@ -152,7 +148,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         body: JSON.stringify({
           projectName,
           generatedCode,
-          brandName: auditResult.analysis.brandName,
+          brandName: auditResult.analysis.businessName,
         }),
       });
 
@@ -183,6 +179,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       auditResult: null,
       customInstructions: "",
       generatedCode: null,
+      demoUrl: null,
       deploymentUrl: null,
       githubUrl: null,
     }),

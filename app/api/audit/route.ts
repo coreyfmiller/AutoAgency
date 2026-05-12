@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { scrapeWebsite } from "@/lib/audit/scraper";
 import { analyzeWithGemini } from "@/lib/audit/analyzer";
-import { compilePrompt } from "@/lib/audit/prompt-compiler";
 
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";
@@ -37,50 +36,50 @@ export async function POST(request: NextRequest) {
     } catch (scrapeError) {
       console.error("[audit] Scrape failed:", scrapeError);
       return NextResponse.json(
-        {
-          error: `Scraping failed: ${scrapeError instanceof Error ? scrapeError.message : "Unknown error"}`,
-        },
+        { error: `Scraping failed: ${scrapeError instanceof Error ? scrapeError.message : "Unknown error"}` },
         { status: 500 }
       );
     }
 
-    // Step 2: Analyze with Gemini
+    // Step 2: Analyze with Gemini (classifies images + writes v0 prompt)
     console.log("[audit] Starting Gemini analysis...");
     let analysis;
     try {
       analysis = await analyzeWithGemini(scrapedData);
-      console.log("[audit] Analysis complete. Brand:", analysis.brandName);
+      console.log("[audit] Analysis complete. Business:", analysis.businessName);
     } catch (analysisError) {
       console.error("[audit] Analysis failed:", analysisError);
       return NextResponse.json(
-        {
-          error: `AI analysis failed: ${analysisError instanceof Error ? analysisError.message : "Unknown error"}`,
-        },
+        { error: `AI analysis failed: ${analysisError instanceof Error ? analysisError.message : "Unknown error"}` },
         { status: 500 }
       );
     }
 
-    // Step 3: Compile the prompt
-    const compiledPrompt = compilePrompt(scrapedData, analysis);
-
-    // Return all data (excluding the raw screenshot buffer for JSON response)
     return NextResponse.json({
       success: true,
       scraped: {
-        ...scrapedData,
+        url: scrapedData.url,
+        title: scrapedData.title,
+        description: scrapedData.description,
+        images: scrapedData.images,
+        logos: scrapedData.logos,
+        fonts: scrapedData.fonts,
+        colors: scrapedData.colors,
+        navLinks: scrapedData.navLinks,
+        headings: scrapedData.headings,
+        heroText: scrapedData.heroText,
+        heroSubtext: scrapedData.heroSubtext,
+        socialLinks: scrapedData.socialLinks,
         screenshot: scrapedData.screenshot
           ? `data:image/png;base64,${scrapedData.screenshot.toString("base64")}`
           : null,
       },
       analysis,
-      prompt: compiledPrompt,
     });
   } catch (error) {
     console.error("[audit] Unexpected error:", error);
     return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : "An unexpected error occurred",
-      },
+      { error: error instanceof Error ? error.message : "An unexpected error occurred" },
       { status: 500 }
     );
   }

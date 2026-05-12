@@ -187,7 +187,86 @@ export function Workspace() {
       </div>
 
       {/* Action Bar */}
-      <div className="glass-panel rounded-2xl p-4">
+      <div className="glass-panel rounded-2xl p-4 space-y-3">
+        {/* Status Messages */}
+        {githubUrl && !deploymentUrl && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-green-500/10 border border-green-500/20"
+          >
+            <CheckCircle2 className="w-4 h-4 text-green-500" />
+            <span className="text-sm text-green-600 font-medium">
+              Pushed to GitHub successfully!
+            </span>
+            <a
+              href={githubUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm text-green-600 underline flex items-center gap-1 ml-auto"
+            >
+              View repo <ExternalLink className="w-3 h-3" />
+            </a>
+          </motion.div>
+        )}
+
+        {deploymentUrl && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-green-500/10 border border-green-500/20"
+          >
+            <CheckCircle2 className="w-4 h-4 text-green-500" />
+            <span className="text-sm text-green-600 font-medium">
+              Deployed to Vercel!
+            </span>
+            <div className="flex items-center gap-3 ml-auto">
+              <a
+                href={githubUrl!}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-green-600 underline flex items-center gap-1"
+              >
+                Repo <ExternalLink className="w-3 h-3" />
+              </a>
+              <a
+                href={deploymentUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-green-600 underline flex items-center gap-1"
+              >
+                Live site <ExternalLink className="w-3 h-3" />
+              </a>
+            </div>
+          </motion.div>
+        )}
+
+        {isPushingToGit && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-500/10 border border-blue-500/20"
+          >
+            <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />
+            <span className="text-sm text-blue-600 font-medium">
+              Creating repo & uploading images... This may take a minute.
+            </span>
+          </motion.div>
+        )}
+
+        {isDeploying && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-500/10 border border-blue-500/20"
+          >
+            <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />
+            <span className="text-sm text-blue-600 font-medium">
+              Deploying to Vercel...
+            </span>
+          </motion.div>
+        )}
+
         <div className="flex items-center gap-3 flex-wrap">
           {/* Media toggle */}
           <button
@@ -252,28 +331,6 @@ export function Workspace() {
             )}
             {deploymentUrl ? "Deployed" : "Deploy to Vercel"}
           </button>
-
-          {/* Links */}
-          {githubUrl && (
-            <a
-              href={githubUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs text-primary hover:text-primary/80 flex items-center gap-1"
-            >
-              Repo <ExternalLink className="w-3 h-3" />
-            </a>
-          )}
-          {deploymentUrl && (
-            <a
-              href={deploymentUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs text-primary hover:text-primary/80 flex items-center gap-1"
-            >
-              Live site <ExternalLink className="w-3 h-3" />
-            </a>
-          )}
 
           <div className="flex-1" />
 

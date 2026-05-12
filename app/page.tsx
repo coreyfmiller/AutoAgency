@@ -4,13 +4,15 @@ import { ParticleField } from "@/components/particle-field"
 import { AutogenLogo } from "@/components/autogen-logo"
 import { UrlInput } from "@/components/url-input"
 import { PipelineVisualization } from "@/components/pipeline-visualization"
-import { ActiveProjects } from "@/components/active-projects"
-import { KiroConsole } from "@/components/kiro-console"
-import { BrandAssets } from "@/components/brand-assets"
-import { Settings, Bell, User } from "lucide-react"
+import { AuditReview } from "@/components/audit-review"
+import { DeploymentSuccess } from "@/components/deployment-success"
+import { useProjectStore } from "@/lib/store"
+import { Settings, Bell, User, AlertCircle } from "lucide-react"
 import { motion } from "framer-motion"
 
 export default function Dashboard() {
+  const { currentStep, error, reset } = useProjectStore()
+
   return (
     <div className="min-h-screen relative overflow-hidden">
       {/* Animated particle background */}
@@ -93,6 +95,29 @@ export default function Dashboard() {
             <UrlInput />
           </motion.section>
 
+          {/* Error Display */}
+          {currentStep === "error" && error && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="glass-panel rounded-2xl p-6 border border-red-500/30"
+            >
+              <div className="flex items-center gap-3">
+                <AlertCircle className="w-5 h-5 text-red-500" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-foreground">Something went wrong</p>
+                  <p className="text-sm text-muted-foreground">{error}</p>
+                </div>
+                <button
+                  onClick={reset}
+                  className="px-4 py-2 rounded-lg bg-secondary text-sm font-medium text-foreground hover:bg-secondary/80"
+                >
+                  Try Again
+                </button>
+              </div>
+            </motion.div>
+          )}
+
           {/* Pipeline Visualization */}
           <motion.section
             initial={{ opacity: 0, y: 20 }}
@@ -102,32 +127,18 @@ export default function Dashboard() {
             <PipelineVisualization />
           </motion.section>
 
-          {/* Two Column Layout */}
-          <motion.section
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-            className="grid grid-cols-1 lg:grid-cols-2 gap-6"
-          >
-            <ActiveProjects />
-            <KiroConsole />
-          </motion.section>
+          {/* Audit Review (appears after audit completes) */}
+          <AuditReview />
 
-          {/* Brand Assets */}
-          <motion.section
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.3 }}
-          >
-            <BrandAssets />
-          </motion.section>
+          {/* Deployment Success */}
+          <DeploymentSuccess />
         </main>
 
         {/* Footer */}
         <footer className="border-t border-border/50 backdrop-blur-sm mt-12">
           <div className="max-w-[1600px] mx-auto px-6 py-6 flex flex-col md:flex-row items-center justify-between gap-4">
             <p className="text-sm text-muted-foreground">
-              AutoGen Web Command Center v2.0
+              AutoAgency Command Center v2.0
             </p>
             <div className="flex items-center gap-6">
               <span className="text-xs text-muted-foreground flex items-center gap-2">
@@ -144,9 +155,6 @@ export default function Dashboard() {
                   }}
                 />
                 All systems operational
-              </span>
-              <span className="text-xs text-muted-foreground">
-                Last sync: 2 seconds ago
               </span>
             </div>
           </div>

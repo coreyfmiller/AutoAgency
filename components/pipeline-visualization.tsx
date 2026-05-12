@@ -1,31 +1,45 @@
 "use client"
 
 import { motion } from "framer-motion"
-import { Search, Code2, GitBranch, Rocket, Bot } from "lucide-react"
+import { Search, Code2, GitBranch, Rocket, CheckCircle2 } from "lucide-react"
+import { useProjectStore, type PipelineStep } from "@/lib/store"
 
 const steps = [
-  { id: 1, name: "Audit", icon: Search, status: "complete" },
-  { id: 2, name: "v0", icon: Code2, status: "active" },
-  { id: 3, name: "GitHub", icon: GitBranch, status: "pending" },
-  { id: 4, name: "Vercel", icon: Rocket, status: "idle" },
-  { id: 5, name: "Kiro", icon: Bot, status: "idle" },
+  { id: 1, name: "Audit", icon: Search, key: "auditing" as const },
+  { id: 2, name: "Review", icon: CheckCircle2, key: "reviewing" as const },
+  { id: 3, name: "Generate", icon: Code2, key: "generating" as const },
+  { id: 4, name: "Deploy", icon: Rocket, key: "deploying" as const },
+  { id: 5, name: "Live", icon: GitBranch, key: "complete" as const },
 ]
+
+function getStepStatus(stepKey: string, currentStep: PipelineStep) {
+  const order: PipelineStep[] = ["idle", "auditing", "reviewing", "generating", "deploying", "complete"]
+  const stepIndex = order.indexOf(stepKey as PipelineStep)
+  const currentIndex = order.indexOf(currentStep)
+
+  if (currentStep === "error") return "error"
+  if (stepIndex < currentIndex) return "complete"
+  if (stepIndex === currentIndex) return "active"
+  return "idle"
+}
 
 const statusColors = {
   complete: "from-[oklch(0.7_0.2_150)] to-[oklch(0.65_0.18_170)]",
   active: "from-primary to-accent",
-  pending: "from-[oklch(0.8_0.18_85)] to-[oklch(0.75_0.15_60)]",
+  error: "from-red-500 to-red-600",
   idle: "from-muted to-secondary",
 }
 
 const statusGlow = {
   complete: "bg-[oklch(0.7_0.2_150)]",
   active: "bg-primary",
-  pending: "bg-[oklch(0.8_0.18_85)]",
+  error: "bg-red-500",
   idle: "bg-muted-foreground/20",
 }
 
 export function PipelineVisualization() {
+  const { currentStep } = useProjectStore()
+
   return (
     <div className="relative w-full">
       {/* 3D Grid Background */}
@@ -41,7 +55,6 @@ export function PipelineVisualization() {
               <stop offset="100%" stopColor="var(--accent)" stopOpacity="0.1" />
             </linearGradient>
           </defs>
-          {/* Perspective grid lines */}
           {Array.from({ length: 20 }).map((_, i) => (
             <motion.line
               key={`v-${i}`}
@@ -93,7 +106,6 @@ export function PipelineVisualization() {
               const x2 = (i + 2) * (100 / (steps.length + 1)) * 7.5 + 50
               return (
                 <g key={i}>
-                  {/* Background line */}
                   <line
                     x1={`${x1}%`}
                     y1="35"
@@ -103,7 +115,6 @@ export function PipelineVisualization() {
                     strokeWidth="2"
                     strokeDasharray="8 4"
                   />
-                  {/* Animated data flow */}
                   <motion.line
                     x1={`${x1}%`}
                     y1="35"
@@ -126,103 +137,97 @@ export function PipelineVisualization() {
             })}
           </svg>
 
-          {steps.map((step, index) => (
-            <motion.div
-              key={step.id}
-              className="relative z-10 flex flex-col items-center gap-3"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-            >
-              {/* Glow effect */}
+          {steps.map((step, index) => {
+            const status = getStepStatus(step.key, currentStep)
+            return (
               <motion.div
-                className={`absolute w-20 h-20 rounded-full ${statusGlow[step.status as keyof typeof statusGlow]} blur-xl`}
-                animate={{
-                  scale: step.status === "active" ? [1, 1.3, 1] : 1,
-                  opacity: step.status === "active" ? [0.3, 0.6, 0.3] : 0.2,
-                }}
-                transition={{
-                  duration: 2,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                }}
-              />
-
-              {/* Node */}
-              <motion.div
-                className={`relative w-16 h-16 rounded-2xl bg-gradient-to-br ${statusColors[step.status as keyof typeof statusColors]} flex items-center justify-center shadow-lg`}
-                whileHover={{ scale: 1.1, rotate: 5 }}
-                animate={
-                  step.status === "active"
-                    ? {
-                        boxShadow: [
-                          "0 0 20px rgba(0, 180, 200, 0.3)",
-                          "0 0 40px rgba(0, 180, 200, 0.5)",
-                          "0 0 20px rgba(0, 180, 200, 0.3)",
-                        ],
-                      }
-                    : {}
-                }
-                transition={{
-                  duration: 2,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                }}
+                key={step.id}
+                className="relative z-10 flex flex-col items-center gap-3"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.1 }}
               >
-                {/* Step number badge */}
-                <div className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-card border border-border flex items-center justify-center text-xs font-bold text-foreground">
-                  {step.id}
-                </div>
-                <step.icon className="w-7 h-7 text-white" />
+                {/* Glow effect */}
+                <motion.div
+                  className={`absolute w-20 h-20 rounded-full ${statusGlow[status]} blur-xl`}
+                  animate={{
+                    scale: status === "active" ? [1, 1.3, 1] : 1,
+                    opacity: status === "active" ? [0.3, 0.6, 0.3] : 0.2,
+                  }}
+                  transition={{
+                    duration: 2,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                  }}
+                />
 
-                {/* Data particles around active node */}
-                {step.status === "active" && (
-                  <>
-                    {[0, 1, 2, 3].map((i) => (
-                      <motion.div
-                        key={i}
-                        className="absolute w-1.5 h-1.5 rounded-full bg-white"
-                        animate={{
-                          rotate: 360,
-                        }}
-                        transition={{
-                          duration: 2 + i * 0.5,
-                          repeat: Infinity,
-                          ease: "linear",
-                        }}
-                        style={{
-                          top: "50%",
-                          left: "50%",
-                          transformOrigin: `${-20 - i * 5}px 0px`,
-                        }}
-                      />
-                    ))}
-                  </>
-                )}
+                {/* Node */}
+                <motion.div
+                  className={`relative w-16 h-16 rounded-2xl bg-gradient-to-br ${statusColors[status]} flex items-center justify-center shadow-lg`}
+                  whileHover={{ scale: 1.1, rotate: 5 }}
+                  animate={
+                    status === "active"
+                      ? {
+                          boxShadow: [
+                            "0 0 20px rgba(0, 180, 200, 0.3)",
+                            "0 0 40px rgba(0, 180, 200, 0.5)",
+                            "0 0 20px rgba(0, 180, 200, 0.3)",
+                          ],
+                        }
+                      : {}
+                  }
+                  transition={{
+                    duration: 2,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                  }}
+                >
+                  <div className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-card border border-border flex items-center justify-center text-xs font-bold text-foreground">
+                    {step.id}
+                  </div>
+                  <step.icon className="w-7 h-7 text-white" />
+
+                  {status === "active" && (
+                    <>
+                      {[0, 1, 2, 3].map((i) => (
+                        <motion.div
+                          key={i}
+                          className="absolute w-1.5 h-1.5 rounded-full bg-white"
+                          animate={{ rotate: 360 }}
+                          transition={{
+                            duration: 2 + i * 0.5,
+                            repeat: Infinity,
+                            ease: "linear",
+                          }}
+                          style={{
+                            top: "50%",
+                            left: "50%",
+                            transformOrigin: `${-20 - i * 5}px 0px`,
+                          }}
+                        />
+                      ))}
+                    </>
+                  )}
+                </motion.div>
+
+                <span className="text-sm font-medium text-foreground">{step.name}</span>
+
+                <motion.div
+                  className={`w-2 h-2 rounded-full ${statusGlow[status]}`}
+                  animate={
+                    status === "active"
+                      ? { scale: [1, 1.5, 1], opacity: [1, 0.5, 1] }
+                      : {}
+                  }
+                  transition={{
+                    duration: 1,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                  }}
+                />
               </motion.div>
-
-              {/* Label */}
-              <span className="text-sm font-medium text-foreground">{step.name}</span>
-
-              {/* Status indicator */}
-              <motion.div
-                className={`w-2 h-2 rounded-full ${statusGlow[step.status as keyof typeof statusGlow]}`}
-                animate={
-                  step.status === "active" || step.status === "pending"
-                    ? {
-                        scale: [1, 1.5, 1],
-                        opacity: [1, 0.5, 1],
-                      }
-                    : {}
-                }
-                transition={{
-                  duration: step.status === "pending" ? 1.5 : 1,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                }}
-              />
-            </motion.div>
-          ))}
+            )
+          })}
         </div>
       </div>
     </div>

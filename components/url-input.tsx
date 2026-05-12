@@ -3,26 +3,24 @@
 import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Search, Sparkles, Loader2 } from "lucide-react"
+import { useProjectStore } from "@/lib/store"
 
 export function UrlInput() {
   const [url, setUrl] = useState("")
-  const [isScanning, setIsScanning] = useState(false)
   const [showFlare, setShowFlare] = useState(false)
+  const { currentStep, startAudit, setTargetUrl } = useProjectStore()
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const isScanning = currentStep === "auditing"
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!url) return
+    if (!url || isScanning) return
 
     setShowFlare(true)
-    setIsScanning(true)
+    setTimeout(() => setShowFlare(false), 500)
 
-    setTimeout(() => {
-      setShowFlare(false)
-    }, 500)
-
-    setTimeout(() => {
-      setIsScanning(false)
-    }, 3000)
+    setTargetUrl(url)
+    await startAudit()
   }
 
   return (
@@ -96,7 +94,7 @@ export function UrlInput() {
             />
             <motion.button
               type="submit"
-              disabled={isScanning}
+              disabled={isScanning || !url}
               className="relative ml-4 px-6 py-2.5 rounded-full bg-gradient-to-r from-primary to-accent text-primary-foreground font-medium text-sm flex items-center gap-2 disabled:opacity-70"
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}

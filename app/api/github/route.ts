@@ -179,6 +179,13 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    if (!fileNames.has("lib/utils.ts")) {
+      scaffoldFiles.push({
+        name: "lib/utils.ts",
+        content: `import { type ClassValue, clsx } from "clsx"\nimport { twMerge } from "tailwind-merge"\n\nexport function cn(...inputs: ClassValue[]) {\n  return twMerge(clsx(inputs))\n}\n`,
+      });
+    }
+
     if (!fileNames.has("package.json")) {
       scaffoldFiles.push({
         name: "package.json",

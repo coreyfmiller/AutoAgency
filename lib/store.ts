@@ -220,7 +220,7 @@ export const useProjectStore = create<ProjectState>()(
       },
 
       pushToGitHub: async (projectName: string) => {
-        const { generatedFiles, auditResult } = get();
+        const { generatedFiles, auditResult, customLogoUrl, customHeroUrl } = get();
         if (!generatedFiles.length || !auditResult) return;
 
         set({ isPushingToGit: true, error: null });
@@ -245,6 +245,8 @@ export const useProjectStore = create<ProjectState>()(
               files: generatedFiles,
               brandName: auditResult.analysis.businessName,
               images,
+              logoUrl: customLogoUrl || auditResult.analysis.logoUrl || null,
+              heroUrl: customHeroUrl || auditResult.analysis.heroImageUrl || null,
             }),
           });
 

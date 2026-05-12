@@ -178,7 +178,7 @@ async function pushAllFiles(
 
 export async function POST(request: NextRequest) {
   try {
-    const { projectName, files, brandName, images } = await request.json();
+    const { projectName, files, brandName, images, logoUrl, heroUrl } = await request.json();
 
     if (!projectName || !files?.length) {
       return NextResponse.json(
@@ -227,13 +227,51 @@ export async function POST(request: NextRequest) {
     // Build the complete file list: v0 files + scaffold + images
     const allFilesToCommit: FileToCommit[] = [];
 
+    // Download logo and hero images if provided, save to public/images/
+    const urlReplacements: { from: string; to: string }[] = [];
+
+    if (logoUrl) {
+      const result = await downloadImage(logoUrl);
+      if (result) {
+        const logoFilename = `logo.${result.extension}`;
+        allFilesToCommit.push({
+          path: `public/images/${logoFilename}`,
+          content: result.buffer,
+          encoding: "base64",
+        });
+        urlReplacements.push({ from: logoUrl, to: `/images/${logoFilename}` });
+        console.log("[github] Downloaded logo:", logoFilename);
+      }
+    }
+
+    if (heroUrl) {
+      const result = await downloadImage(heroUrl);
+      if (result) {
+        const heroFilename = `hero.${result.extension}`;
+        allFilesToCommit.push({
+          path: `public/images/${heroFilename}`,
+          content: result.buffer,
+          encoding: "base64",
+        });
+        urlReplacements.push({ from: heroUrl, to: `/images/${heroFilename}` });
+        console.log("[github] Downloaded hero:", heroFilename);
+      }
+    }
+
     // Add v0-generated files (filter out tailwind.config which conflicts with v4)
+    // Replace external image URLs with local paths
     for (const file of files) {
       if (!file.name || !file.content) continue;
       if (file.name === "tailwind.config.ts" || file.name === "tailwind.config.js") continue;
+
+      let content = file.content;
+      for (const replacement of urlReplacements) {
+        content = content.replaceAll(replacement.from, replacement.to);
+      }
+
       allFilesToCommit.push({
         path: file.name,
-        content: file.content,
+        content,
         encoding: "utf-8",
       });
     }

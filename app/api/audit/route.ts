@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { scrapeWebsite } from "@/lib/audit/scraper";
 import { analyzeWithGemini } from "@/lib/audit/analyzer";
 
-export const maxDuration = 60;
+export const maxDuration = 300;
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { v0 } from "v0-sdk";
 
-export const maxDuration = 120;
+export const maxDuration = 300;
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {

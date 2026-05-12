@@ -6,7 +6,6 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  serverExternalPackages: ["playwright-core"],
 }
 
 export default nextConfig

@@ -44,6 +44,7 @@ export interface ProjectState {
   // Generation
   customInstructions: string;
   useScrapedImages: boolean;
+  customLogoUrl: string | null;
   generatedCode: string | null;
   generatedFiles: GeneratedFile[];
   demoUrl: string | null;
@@ -64,6 +65,7 @@ export interface ProjectState {
   startAudit: () => Promise<void>;
   setCustomInstructions: (instructions: string) => void;
   setUseScrapedImages: (use: boolean) => void;
+  setCustomLogoUrl: (url: string | null) => void;
   startGeneration: () => Promise<void>;
   sendEdit: (message: string) => Promise<void>;
   pushToGitHub: (projectName: string) => Promise<void>;
@@ -80,6 +82,7 @@ export const useProjectStore = create<ProjectState>()(
       auditResult: null,
       customInstructions: "",
       useScrapedImages: true,
+      customLogoUrl: null,
       generatedCode: null,
       generatedFiles: [],
       demoUrl: null,
@@ -129,8 +132,10 @@ export const useProjectStore = create<ProjectState>()(
 
       setUseScrapedImages: (use) => set({ useScrapedImages: use }),
 
+      setCustomLogoUrl: (url) => set({ customLogoUrl: url }),
+
       startGeneration: async () => {
-        const { auditResult, customInstructions, useScrapedImages } = get();
+        const { auditResult, customInstructions, useScrapedImages, customLogoUrl } = get();
         if (!auditResult) return;
 
         set({ currentStep: "generating", error: null });
@@ -141,9 +146,11 @@ export const useProjectStore = create<ProjectState>()(
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               v0Prompt: auditResult.analysis.v0Prompt,
-              customInstructions: useScrapedImages
-                ? customInstructions
-                : `${customInstructions ? customInstructions + ". " : ""}Do not use any of the provided image URLs. Use v0's own generated placeholder images for all sections.`,
+              customInstructions: [
+                !useScrapedImages ? "Do not use any of the provided image URLs. Use v0's own generated placeholder images for all sections." : "",
+                customLogoUrl ? `Use this logo instead: ${customLogoUrl}` : "",
+                customInstructions,
+              ].filter(Boolean).join(" "),
             }),
           });
 
@@ -291,6 +298,7 @@ export const useProjectStore = create<ProjectState>()(
           auditResult: null,
           customInstructions: "",
           useScrapedImages: true,
+          customLogoUrl: null,
           generatedCode: null,
           generatedFiles: [],
           demoUrl: null,
@@ -320,6 +328,7 @@ export const useProjectStore = create<ProjectState>()(
           : null,
         customInstructions: state.customInstructions,
         useScrapedImages: state.useScrapedImages,
+        customLogoUrl: state.customLogoUrl,
         generatedCode: state.generatedCode,
         generatedFiles: state.generatedFiles,
         demoUrl: state.demoUrl,

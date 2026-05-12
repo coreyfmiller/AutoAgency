@@ -22,12 +22,15 @@ export function AuditReview() {
     setCustomInstructions,
     useScrapedImages,
     setUseScrapedImages,
+    customLogoUrl,
+    setCustomLogoUrl,
     startGeneration,
     generatedCode,
     demoUrl,
   } = useProjectStore()
 
   const [showPrompt, setShowPrompt] = useState(false)
+  const [isUploading, setIsUploading] = useState(false)
 
   if (!auditResult || currentStep === "idle" || currentStep === "auditing") {
     return null
@@ -129,6 +132,39 @@ export function AuditReview() {
                       HERO
                     </span>
                   </div>
+                </div>
+              )}
+            </div>
+
+            {/* Upload custom logo */}
+            <div className="mt-3">
+              <label className="flex items-center gap-2 px-3 py-2 rounded-lg bg-secondary/50 border border-border/50 cursor-pointer hover:bg-secondary/80 transition-colors text-sm text-muted-foreground">
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0]
+                    if (!file) return
+                    setIsUploading(true)
+                    try {
+                      const formData = new FormData()
+                      formData.append("file", file)
+                      const res = await fetch("/api/upload", { method: "POST", body: formData })
+                      if (res.ok) {
+                        const data = await res.json()
+                        setCustomLogoUrl(data.url)
+                      }
+                    } catch {}
+                    setIsUploading(false)
+                  }}
+                />
+                {isUploading ? "Uploading..." : customLogoUrl ? "✓ Custom logo uploaded" : "Upload custom logo"}
+              </label>
+              {customLogoUrl && (
+                <div className="mt-2 flex items-center gap-2">
+                  <img src={customLogoUrl} alt="Custom logo" className="h-8 object-contain" />
+                  <button onClick={() => setCustomLogoUrl(null)} className="text-xs text-red-500">Remove</button>
                 </div>
               )}
             </div>

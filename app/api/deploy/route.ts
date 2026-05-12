@@ -14,13 +14,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Extract repo full name from GitHub URL (e.g., "coreyfmiller/smith-roofing")
+    // Extract repo full name from GitHub URL
     const repoMatch = githubUrl.match(/github\.com\/([^/]+\/[^/]+)/);
     if (!repoMatch) {
-      return NextResponse.json(
-        { error: "Invalid GitHub URL" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Invalid GitHub URL" }, { status: 400 });
     }
     const repoFullName = repoMatch[1];
 
@@ -61,53 +58,32 @@ export async function POST(request: NextRequest) {
     const project = await projectResponse.json();
     console.log("[deploy] Project created:", project.id);
 
-    // Trigger a deployment
-    const deployResponse = await fetch("https://api.vercel.com/v13/deployments", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${process.env.VERCEL_API_TOKEN}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        name: vercelName,
-        project: project.id,
-        target: "production",
-        gitSource: {
-          type: "github",
-          repoId: String(project.link?.repoId || ""),
-          ref: "main",
+    // Trigger a build by pushing a deploy trigger file to the repo
+    // This forces Vercel to pick up the repo and start building
+    const triggerContent = `Deployed via ClientFactory at ${new Date().toISOString()}`;
+    
+    await fetch(
+      `https://api.github.com/repos/${repoFullName}/contents/.vercel-trigger`,
+      {
+        method: "PUT",
+        headers: {
+          Authorization: `token ${process.env.GITHUB_TOKEN}`,
+          "Content-Type": "application/json",
+          Accept: "application/vnd.github.v3+json",
         },
-        projectSettings: {
-          buildCommand: "next build",
-          framework: "nextjs",
-          resourceConfig: {
-            buildMachineType: "elastic",
-          },
-        },
-      }),
-    });
+        body: JSON.stringify({
+          message: "Trigger Vercel deployment",
+          content: Buffer.from(triggerContent).toString("base64"),
+        }),
+      }
+    );
 
-    if (!deployResponse.ok) {
-      const error = await deployResponse.text();
-      console.error("[deploy] Deployment trigger failed:", error);
-      // Project is created and linked — it will auto-deploy on next push
-      return NextResponse.json({
-        success: true,
-        url: `https://${vercelName}.vercel.app`,
-        projectId: project.id,
-        note: "Project created and linked to GitHub. Push to the repo to trigger a build.",
-      });
-    }
+    console.log("[deploy] Triggered build via git push");
 
-    const deployment = await deployResponse.json();
-    console.log("[deploy] Deployment triggered:", deployment.url);
-
-    // Use the clean project URL, not the unique deployment URL
     return NextResponse.json({
       success: true,
       url: `https://${vercelName}.vercel.app`,
       projectId: project.id,
-      deploymentId: deployment.id,
     });
   } catch (error) {
     console.error("[deploy] Error:", error);

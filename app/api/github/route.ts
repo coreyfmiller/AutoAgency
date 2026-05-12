@@ -9,6 +9,12 @@ interface ImageToSave {
   description?: string;
 }
 
+interface FileToCommit {
+  path: string;
+  content: string | Buffer;
+  encoding: "utf-8" | "base64";
+}
+
 async function downloadImage(url: string): Promise<{ buffer: Buffer; extension: string } | null> {
   try {
     const response = await fetch(url, {
@@ -18,10 +24,7 @@ async function downloadImage(url: string): Promise<{ buffer: Buffer; extension: 
       redirect: "follow",
     });
 
-    if (!response.ok) {
-      console.error(`[github] Failed to download image: ${url} (${response.status})`);
-      return null;
-    }
+    if (!response.ok) return null;
 
     const contentType = response.headers.get("content-type") || "";
     let extension = "jpg";
@@ -36,38 +39,141 @@ async function downloadImage(url: string): Promise<{ buffer: Buffer; extension: 
     }
 
     const buffer = Buffer.from(await response.arrayBuffer());
-
-    // Skip tiny images (likely tracking pixels) and huge ones
-    if (buffer.length < 500 || buffer.length > 10_000_000) {
-      return null;
-    }
+    if (buffer.length < 500 || buffer.length > 10_000_000) return null;
 
     return { buffer, extension };
-  } catch (error) {
-    console.error(`[github] Error downloading ${url}:`, error);
+  } catch {
     return null;
   }
 }
 
 function getImageFilename(type: string, index: number, extension: string): string {
   switch (type) {
-    case "logo":
-      return `logo.${extension}`;
-    case "hero":
-      return `hero.${extension}`;
-    case "team":
-      return `team-${index + 1}.${extension}`;
-    case "product":
-      return `product-${index + 1}.${extension}`;
-    case "testimonial":
-      return `testimonial-${index + 1}.${extension}`;
-    case "gallery":
-      return `gallery-${index + 1}.${extension}`;
-    case "icon":
-      return `icon-${index + 1}.${extension}`;
-    default:
-      return `image-${index + 1}.${extension}`;
+    case "logo": return `logo.${extension}`;
+    case "hero": return `hero.${extension}`;
+    case "team": return `team-${index + 1}.${extension}`;
+    case "product": return `product-${index + 1}.${extension}`;
+    case "testimonial": return `testimonial-${index + 1}.${extension}`;
+    case "gallery": return `gallery-${index + 1}.${extension}`;
+    case "icon": return `icon-${index + 1}.${extension}`;
+    default: return `image-${index + 1}.${extension}`;
   }
+}
+
+// Push all files in a single atomic commit using the Git Trees API
+async function pushAllFiles(
+  fullName: string,
+  filesToCommit: FileToCommit[],
+  commitMessage: string
+): Promise<void> {
+  const token = process.env.GITHUB_TOKEN!;
+  const headers = {
+    Authorization: `token ${token}`,
+    "Content-Type": "application/json",
+    Accept: "application/vnd.github.v3+json",
+  };
+
+  // 1. Get the current HEAD SHA
+  const refRes = await fetch(
+    `https://api.github.com/repos/${fullName}/git/ref/heads/main`,
+    { headers }
+  );
+  if (!refRes.ok) {
+    throw new Error(`Failed to get HEAD ref: ${await refRes.text()}`);
+  }
+  const refData = await refRes.json();
+  const headSha = refData.object.sha;
+
+  // 2. Create blobs for each file
+  const treeItems: { path: string; mode: string; type: string; sha: string }[] = [];
+
+  for (const file of filesToCommit) {
+    const blobContent = file.encoding === "base64"
+      ? (file.content as Buffer).toString("base64")
+      : Buffer.from(file.content as string, "utf-8").toString("base64");
+
+    const blobRes = await fetch(
+      `https://api.github.com/repos/${fullName}/git/blobs`,
+      {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          content: blobContent,
+          encoding: "base64",
+        }),
+      }
+    );
+
+    if (!blobRes.ok) {
+      console.error(`[github] Failed to create blob for ${file.path}`);
+      continue;
+    }
+
+    const blob = await blobRes.json();
+    treeItems.push({
+      path: file.path,
+      mode: "100644",
+      type: "blob",
+      sha: blob.sha,
+    });
+  }
+
+  if (treeItems.length === 0) {
+    throw new Error("No files to commit");
+  }
+
+  // 3. Create a new tree
+  const treeRes = await fetch(
+    `https://api.github.com/repos/${fullName}/git/trees`,
+    {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        base_tree: headSha,
+        tree: treeItems,
+      }),
+    }
+  );
+
+  if (!treeRes.ok) {
+    throw new Error(`Failed to create tree: ${await treeRes.text()}`);
+  }
+  const tree = await treeRes.json();
+
+  // 4. Create a commit
+  const commitRes = await fetch(
+    `https://api.github.com/repos/${fullName}/git/commits`,
+    {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        message: commitMessage,
+        tree: tree.sha,
+        parents: [headSha],
+      }),
+    }
+  );
+
+  if (!commitRes.ok) {
+    throw new Error(`Failed to create commit: ${await commitRes.text()}`);
+  }
+  const commit = await commitRes.json();
+
+  // 5. Update the ref to point to the new commit
+  const updateRefRes = await fetch(
+    `https://api.github.com/repos/${fullName}/git/refs/heads/main`,
+    {
+      method: "PATCH",
+      headers,
+      body: JSON.stringify({ sha: commit.sha }),
+    }
+  );
+
+  if (!updateRefRes.ok) {
+    throw new Error(`Failed to update ref: ${await updateRefRes.text()}`);
+  }
+
+  console.log(`[github] Committed ${treeItems.length} files in one atomic commit`);
 }
 
 export async function POST(request: NextRequest) {
@@ -85,8 +191,6 @@ export async function POST(request: NextRequest) {
       .toLowerCase()
       .replace(/[^a-z0-9-]/g, "-")
       .replace(/-+/g, "-");
-
-    console.log("[github] Creating repo:", repoName);
 
     // Try to create the repository — if it already exists, we'll update it
     const createRepoRes = await fetch("https://api.github.com/user/repos", {
@@ -112,30 +216,41 @@ export async function POST(request: NextRequest) {
       fullName = repo.full_name;
       repoUrl = repo.html_url;
       console.log("[github] Repo created:", fullName);
-      // Wait for GitHub to initialize new repo
-      await new Promise((r) => setTimeout(r, 2000));
+      await new Promise((r) => setTimeout(r, 3000)); // Wait for GitHub to initialize
     } else {
-      // Repo likely already exists — use it
       const owner = process.env.GITHUB_OWNER || "coreyfmiller";
       fullName = `${owner}/${repoName}`;
       repoUrl = `https://github.com/${fullName}`;
       console.log("[github] Repo already exists, updating:", fullName);
     }
 
-    // Determine which scaffold files are needed (only add if v0 didn't provide them)
+    // Build the complete file list: v0 files + scaffold + images
+    const allFilesToCommit: FileToCommit[] = [];
+
+    // Add v0-generated files
+    for (const file of files) {
+      if (!file.name || !file.content) continue;
+      allFilesToCommit.push({
+        path: file.name,
+        content: file.content,
+        encoding: "utf-8",
+      });
+    }
+
+    // Determine scaffold files needed
     const fileNames = new Set(files.map((f: { name: string }) => f.name));
-    const scaffoldFiles: { name: string; content: string }[] = [];
 
     if (!fileNames.has("next.config.mjs") && !fileNames.has("next.config.js") && !fileNames.has("next.config.ts")) {
-      scaffoldFiles.push({
-        name: "next.config.mjs",
+      allFilesToCommit.push({
+        path: "next.config.mjs",
         content: `/** @type {import('next').NextConfig} */\nconst nextConfig = {\n  images: {\n    unoptimized: true,\n  },\n}\n\nexport default nextConfig\n`,
+        encoding: "utf-8",
       });
     }
 
     if (!fileNames.has("tsconfig.json")) {
-      scaffoldFiles.push({
-        name: "tsconfig.json",
+      allFilesToCommit.push({
+        path: "tsconfig.json",
         content: JSON.stringify({
           compilerOptions: {
             target: "ES2017",
@@ -157,38 +272,37 @@ export async function POST(request: NextRequest) {
           include: ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
           exclude: ["node_modules"],
         }, null, 2) + "\n",
+        encoding: "utf-8",
       });
     }
 
-    if (!fileNames.has("tailwind.config.ts") && !fileNames.has("tailwind.config.js")) {
-      // Tailwind v4 doesn't need a config file — config is in CSS
-      // Only add if v0 didn't provide one
-    }
-
     if (!fileNames.has("postcss.config.mjs") && !fileNames.has("postcss.config.js")) {
-      scaffoldFiles.push({
-        name: "postcss.config.mjs",
+      allFilesToCommit.push({
+        path: "postcss.config.mjs",
         content: `/** @type {import('postcss-load-config').Config} */\nconst config = {\n  plugins: {\n    "@tailwindcss/postcss": {},\n  },\n}\n\nexport default config\n`,
+        encoding: "utf-8",
       });
     }
 
     if (!fileNames.has(".gitignore")) {
-      scaffoldFiles.push({
-        name: ".gitignore",
+      allFilesToCommit.push({
+        path: ".gitignore",
         content: "node_modules\n.next\n.env*.local\n",
+        encoding: "utf-8",
       });
     }
 
-    if (!fileNames.has("lib/utils.ts")) {
-      scaffoldFiles.push({
-        name: "lib/utils.ts",
+    if (!fileNames.has("lib/utils.ts") && !fileNames.has("lib/utils.js")) {
+      allFilesToCommit.push({
+        path: "lib/utils.ts",
         content: `import { type ClassValue, clsx } from "clsx"\nimport { twMerge } from "tailwind-merge"\n\nexport function cn(...inputs: ClassValue[]) {\n  return twMerge(clsx(inputs))\n}\n`,
+        encoding: "utf-8",
       });
     }
 
     if (!fileNames.has("package.json")) {
-      scaffoldFiles.push({
-        name: "package.json",
+      allFilesToCommit.push({
+        path: "package.json",
         content: JSON.stringify({
           name: repoName,
           version: "0.1.0",
@@ -216,126 +330,53 @@ export async function POST(request: NextRequest) {
             "@types/react-dom": "^18",
           },
         }, null, 2) + "\n",
+        encoding: "utf-8",
       });
     }
 
-    // Combine v0 files + scaffold files
-    const allFiles = [...files, ...scaffoldFiles];
+    // Add README
+    allFilesToCommit.push({
+      path: "README.md",
+      content: `# ${brandName}\n\nModern website rebuild generated by [RefreshFactory.ai](https://auto-agency-three.vercel.app).\n\n## Getting Started\n\n\`\`\`bash\nnpm install\nnpm run dev\n\`\`\`\n\n## Images\n\nAll scraped images are saved in \`public/images/\`.\n`,
+      encoding: "utf-8",
+    });
 
-    // Push all files (get SHA first if file exists for updates)
-    for (const file of allFiles) {
-      if (!file.name || !file.content) continue;
-
-      // Check if file already exists to get its SHA
-      let sha: string | undefined;
-      const existingRes = await fetch(
-        `https://api.github.com/repos/${fullName}/contents/${file.name}`,
-        {
-          headers: {
-            Authorization: `token ${process.env.GITHUB_TOKEN}`,
-            Accept: "application/vnd.github.v3+json",
-          },
-        }
-      );
-      if (existingRes.ok) {
-        const existing = await existingRes.json();
-        sha = existing.sha;
-      }
-
-      const res = await fetch(
-        `https://api.github.com/repos/${fullName}/contents/${file.name}`,
-        {
-          method: "PUT",
-          headers: {
-            Authorization: `token ${process.env.GITHUB_TOKEN}`,
-            "Content-Type": "application/json",
-            Accept: "application/vnd.github.v3+json",
-          },
-          body: JSON.stringify({
-            message: sha ? `Update ${file.name}` : `Add ${file.name}`,
-            content: Buffer.from(file.content).toString("base64"),
-            ...(sha ? { sha } : {}),
-          }),
-        }
-      );
-
-      if (!res.ok) {
-        console.error(`[github] Failed to push ${file.name}:`, await res.text());
-      }
-    }
-
-    // Download and push images to public/images/
+    // Download images
     const imageList: ImageToSave[] = images || [];
     const typeCounts: Record<string, number> = {};
     let savedImages = 0;
 
     if (imageList.length > 0) {
       console.log(`[github] Downloading ${imageList.length} images...`);
-
       for (const img of imageList) {
         const result = await downloadImage(img.url);
         if (!result) continue;
 
-        // Track count per type for naming
         const type = img.type || "other";
-        typeCounts[type] = (typeCounts[type] || 0);
+        typeCounts[type] = typeCounts[type] || 0;
         const filename = getImageFilename(type, typeCounts[type], result.extension);
         typeCounts[type]++;
 
-        const filePath = `public/images/${filename}`;
-
-        const res = await fetch(
-          `https://api.github.com/repos/${fullName}/contents/${filePath}`,
-          {
-            method: "PUT",
-            headers: {
-              Authorization: `token ${process.env.GITHUB_TOKEN}`,
-              "Content-Type": "application/json",
-              Accept: "application/vnd.github.v3+json",
-            },
-            body: JSON.stringify({
-              message: `Add ${filePath}`,
-              content: result.buffer.toString("base64"),
-            }),
-          }
-        );
-
-        if (res.ok) {
-          savedImages++;
-        } else {
-          console.error(`[github] Failed to push ${filePath}:`, await res.text());
-        }
+        allFilesToCommit.push({
+          path: `public/images/${filename}`,
+          content: result.buffer,
+          encoding: "base64",
+        });
+        savedImages++;
       }
-
-      console.log(`[github] Saved ${savedImages}/${imageList.length} images`);
+      console.log(`[github] Downloaded ${savedImages}/${imageList.length} images`);
     }
 
-    // Add README
-    await fetch(
-      `https://api.github.com/repos/${fullName}/contents/README.md`,
-      {
-        method: "PUT",
-        headers: {
-          Authorization: `token ${process.env.GITHUB_TOKEN}`,
-          "Content-Type": "application/json",
-          Accept: "application/vnd.github.v3+json",
-        },
-        body: JSON.stringify({
-          message: "Add README",
-          content: Buffer.from(
-            `# ${brandName}\n\nModern website rebuild generated by [RefreshFactory.ai](https://auto-agency-three.vercel.app).\n\n## Getting Started\n\n\`\`\`bash\nnpm install\nnpm run dev\n\`\`\`\n\n## Images\n\nAll scraped images are saved in \`public/images/\`.\n`
-          ).toString("base64"),
-        }),
-      }
-    );
-
-    console.log("[github] All files pushed");
+    // Push everything in one atomic commit
+    console.log(`[github] Pushing ${allFilesToCommit.length} files...`);
+    await pushAllFiles(fullName, allFilesToCommit, `Site generated by RefreshFactory.ai`);
 
     return NextResponse.json({
       success: true,
       url: repoUrl,
       fullName,
       repoName,
+      filesPushed: allFilesToCommit.length,
       imagesSaved: savedImages,
     });
   } catch (error) {

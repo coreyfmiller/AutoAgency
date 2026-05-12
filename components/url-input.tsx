@@ -16,10 +16,16 @@ export function UrlInput() {
     e.preventDefault()
     if (!url || isScanning) return
 
+    // Auto-prepend https:// if no protocol is provided
+    let normalizedUrl = url.trim()
+    if (!/^https?:\/\//i.test(normalizedUrl)) {
+      normalizedUrl = `https://${normalizedUrl}`
+    }
+
     setShowFlare(true)
     setTimeout(() => setShowFlare(false), 500)
 
-    setTargetUrl(url)
+    setTargetUrl(normalizedUrl)
     await startAudit()
   }
 
@@ -86,10 +92,10 @@ export function UrlInput() {
           <div className="relative flex items-center px-6 py-4">
             <Search className="w-5 h-5 text-muted-foreground mr-4" />
             <input
-              type="url"
+              type="text"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
-              placeholder="Enter website URL to audit and rebuild..."
+              placeholder="rescuedecks.ca"
               className="flex-1 bg-transparent text-foreground placeholder:text-muted-foreground outline-none text-base"
             />
             <motion.button

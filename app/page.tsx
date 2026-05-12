@@ -122,16 +122,14 @@ export default function Dashboard() {
             </motion.div>
           )}
 
-          {/* Pipeline Visualization - hide in workspace */}
-          {!isInWorkspace && (
-            <motion.section
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.1 }}
-            >
-              <PipelineVisualization />
-            </motion.section>
-          )}
+          {/* Pipeline Visualization - always visible */}
+          <motion.section
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+          >
+            <PipelineVisualization />
+          </motion.section>
 
           {/* Audit Review (appears after audit completes) */}
           {!isInWorkspace && <AuditReview />}

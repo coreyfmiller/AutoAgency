@@ -1,17 +1,32 @@
 "use client"
 
 import { motion } from "framer-motion"
-import { Search, Code2, Rocket, CheckCircle2 } from "lucide-react"
+import { Search, Code2, Rocket, CheckCircle2, GitBranch, Globe } from "lucide-react"
 import { useProjectStore, type PipelineStep } from "@/lib/store"
 
 const steps = [
   { id: 1, name: "Audit", icon: Search, key: "auditing" as const },
   { id: 2, name: "Review", icon: CheckCircle2, key: "reviewing" as const },
   { id: 3, name: "Generate", icon: Code2, key: "generating" as const },
-  { id: 4, name: "Workspace", icon: Rocket, key: "workspace" as const },
+  { id: 4, name: "Live", icon: Rocket, key: "workspace" as const },
+  { id: 5, name: "GitHub", icon: GitBranch, key: "github" as const },
+  { id: 6, name: "Vercel", icon: Globe, key: "vercel" as const },
 ]
 
-function getStepStatus(stepKey: string, currentStep: PipelineStep) {
+function getStepStatus(
+  stepKey: string,
+  currentStep: PipelineStep,
+  githubUrl: string | null,
+  deploymentUrl: string | null
+) {
+  // GitHub and Vercel are special — they depend on deploy state, not pipeline step
+  if (stepKey === "github") {
+    return githubUrl ? "complete" : currentStep === "workspace" ? "idle" : "idle"
+  }
+  if (stepKey === "vercel") {
+    return deploymentUrl ? "complete" : currentStep === "workspace" ? "idle" : "idle"
+  }
+
   const order: PipelineStep[] = ["idle", "auditing", "reviewing", "generating", "workspace"]
   const stepIndex = order.indexOf(stepKey as PipelineStep)
   const currentIndex = order.indexOf(currentStep)
@@ -37,7 +52,7 @@ const statusGlow = {
 }
 
 export function PipelineVisualization() {
-  const { currentStep } = useProjectStore()
+  const { currentStep, githubUrl, deploymentUrl } = useProjectStore()
 
   return (
     <div className="relative w-full">
@@ -101,8 +116,8 @@ export function PipelineVisualization() {
               </linearGradient>
             </defs>
             {steps.slice(0, -1).map((_, i) => {
-              const x1 = (i + 1) * (100 / (steps.length + 1)) * 7.5 + 50
-              const x2 = (i + 2) * (100 / (steps.length + 1)) * 7.5 + 50
+              const x1 = (i + 1) * (100 / (steps.length + 1)) * 7 + 50
+              const x2 = (i + 2) * (100 / (steps.length + 1)) * 7 + 50
               return (
                 <g key={i}>
                   <line
@@ -137,7 +152,7 @@ export function PipelineVisualization() {
           </svg>
 
           {steps.map((step, index) => {
-            const status = getStepStatus(step.key, currentStep)
+            const status = getStepStatus(step.key, currentStep, githubUrl, deploymentUrl)
             return (
               <motion.div
                 key={step.id}
@@ -151,7 +166,7 @@ export function PipelineVisualization() {
                   className={`absolute w-20 h-20 rounded-full ${statusGlow[status]} blur-xl`}
                   animate={{
                     scale: status === "active" ? [1, 1.3, 1] : 1,
-                    opacity: status === "active" ? [0.3, 0.6, 0.3] : 0.2,
+                    opacity: status === "active" ? [0.3, 0.6, 0.3] : status === "complete" ? 0.3 : 0.1,
                   }}
                   transition={{
                     duration: 2,
@@ -162,7 +177,7 @@ export function PipelineVisualization() {
 
                 {/* Node */}
                 <motion.div
-                  className={`relative w-16 h-16 rounded-2xl bg-gradient-to-br ${statusColors[status]} flex items-center justify-center shadow-lg`}
+                  className={`relative w-14 h-14 rounded-2xl bg-gradient-to-br ${statusColors[status]} flex items-center justify-center shadow-lg`}
                   whileHover={{ scale: 1.1, rotate: 5 }}
                   animate={
                     status === "active"
@@ -181,14 +196,11 @@ export function PipelineVisualization() {
                     ease: "easeInOut",
                   }}
                 >
-                  <div className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-card border border-border flex items-center justify-center text-xs font-bold text-foreground">
-                    {step.id}
-                  </div>
-                  <step.icon className="w-7 h-7 text-white" />
+                  <step.icon className="w-6 h-6 text-white" />
 
                   {status === "active" && (
                     <>
-                      {[0, 1, 2, 3].map((i) => (
+                      {[0, 1, 2].map((i) => (
                         <motion.div
                           key={i}
                           className="absolute w-1.5 h-1.5 rounded-full bg-white"
@@ -201,7 +213,7 @@ export function PipelineVisualization() {
                           style={{
                             top: "50%",
                             left: "50%",
-                            transformOrigin: `${-20 - i * 5}px 0px`,
+                            transformOrigin: `${-18 - i * 4}px 0px`,
                           }}
                         />
                       ))}
@@ -209,7 +221,7 @@ export function PipelineVisualization() {
                   )}
                 </motion.div>
 
-                <span className="text-sm font-medium text-foreground">{step.name}</span>
+                <span className="text-xs font-medium text-foreground">{step.name}</span>
 
                 <motion.div
                   className={`w-2 h-2 rounded-full ${statusGlow[status]}`}

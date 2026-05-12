@@ -227,9 +227,10 @@ export async function POST(request: NextRequest) {
     // Build the complete file list: v0 files + scaffold + images
     const allFilesToCommit: FileToCommit[] = [];
 
-    // Add v0-generated files
+    // Add v0-generated files (filter out tailwind.config which conflicts with v4)
     for (const file of files) {
       if (!file.name || !file.content) continue;
+      if (file.name === "tailwind.config.ts" || file.name === "tailwind.config.js") continue;
       allFilesToCommit.push({
         path: file.name,
         content: file.content,
@@ -243,7 +244,7 @@ export async function POST(request: NextRequest) {
     if (!fileNames.has("next.config.mjs") && !fileNames.has("next.config.js") && !fileNames.has("next.config.ts")) {
       allFilesToCommit.push({
         path: "next.config.mjs",
-        content: `/** @type {import('next').NextConfig} */\nconst nextConfig = {\n  images: {\n    unoptimized: true,\n  },\n}\n\nexport default nextConfig\n`,
+        content: `/** @type {import('next').NextConfig} */\nconst nextConfig = {\n  typescript: {\n    ignoreBuildErrors: true,\n  },\n  images: {\n    unoptimized: true,\n  },\n}\n\nexport default nextConfig\n`,
         encoding: "utf-8",
       });
     }

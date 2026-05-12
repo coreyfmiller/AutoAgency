@@ -70,6 +70,7 @@ export interface ProjectState {
   sendEdit: (message: string) => Promise<void>;
   pushToGitHub: (projectName: string) => Promise<void>;
   deployToVercel: (projectName: string) => Promise<void>;
+  regenerate: () => void;
   reset: () => void;
 }
 
@@ -289,6 +290,22 @@ export const useProjectStore = create<ProjectState>()(
           });
         }
       },
+
+      regenerate: () =>
+        set({
+          currentStep: "reviewing",
+          error: null,
+          generatedCode: null,
+          generatedFiles: [],
+          demoUrl: null,
+          chatId: null,
+          githubUrl: null,
+          deploymentUrl: null,
+          isDeploying: false,
+          isPushingToGit: false,
+          editHistory: [],
+          isEditing: false,
+        }),
 
       reset: () =>
         set({

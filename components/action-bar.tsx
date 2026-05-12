@@ -11,6 +11,7 @@ import {
   RotateCcw,
   AlertCircle,
   Pencil,
+  RefreshCw,
 } from "lucide-react"
 import { useProjectStore } from "@/lib/store"
 import Link from "next/link"
@@ -26,6 +27,7 @@ export function ActionBar() {
     githubUrl,
     deploymentUrl,
     error,
+    regenerate,
     reset,
   } = useProjectStore()
 
@@ -187,6 +189,15 @@ export function ActionBar() {
         )}
 
         <div className="flex-1" />
+
+        {/* Regenerate */}
+        <button
+          onClick={regenerate}
+          className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
+        >
+          <RefreshCw className="w-3 h-3" />
+          Regenerate design
+        </button>
 
         {/* Start over */}
         <button

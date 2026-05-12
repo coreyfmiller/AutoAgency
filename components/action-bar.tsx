@@ -137,11 +137,11 @@ export function ActionBar() {
         <button
           onClick={handlePushToGit}
           disabled={isPushingToGit || !!githubUrl}
-          className={`px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-colors ${
+          className={`px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-all ${
             githubUrl
-              ? "bg-green-500/10 text-green-600 border border-green-500/20"
-              : "bg-secondary text-foreground hover:bg-secondary/80"
-          } disabled:opacity-60`}
+              ? "bg-muted/50 text-muted-foreground border border-border/50 opacity-60"
+              : "bg-gradient-to-r from-primary to-accent text-primary-foreground shadow-lg shadow-primary/20"
+          } disabled:cursor-not-allowed`}
         >
           {isPushingToGit ? (
             <Loader2 className="w-4 h-4 animate-spin" />
@@ -157,11 +157,13 @@ export function ActionBar() {
         <button
           onClick={handleDeploy}
           disabled={isDeploying || !githubUrl || !!deploymentUrl}
-          className={`px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-colors ${
+          className={`px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-all ${
             deploymentUrl
-              ? "bg-green-500/10 text-green-600 border border-green-500/20"
-              : "bg-gradient-to-r from-primary to-accent text-primary-foreground"
-          } disabled:opacity-60`}
+              ? "bg-muted/50 text-muted-foreground border border-border/50 opacity-60"
+              : githubUrl && !deploymentUrl
+                ? "bg-gradient-to-r from-primary to-accent text-primary-foreground shadow-lg shadow-primary/20"
+                : "bg-secondary text-muted-foreground"
+          } disabled:cursor-not-allowed`}
         >
           {isDeploying ? (
             <Loader2 className="w-4 h-4 animate-spin" />

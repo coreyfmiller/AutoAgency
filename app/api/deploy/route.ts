@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
         target: "production",
         gitSource: {
           type: "github",
-          repo: repoFullName,
+          repoId: String(project.link?.repoId || ""),
           ref: "main",
         },
         projectSettings: {
@@ -89,22 +89,23 @@ export async function POST(request: NextRequest) {
 
     if (!deployResponse.ok) {
       const error = await deployResponse.text();
-      console.error("[deploy] Deployment failed:", error);
-      // Even if deployment trigger fails, the project is linked and will auto-deploy on push
+      console.error("[deploy] Deployment trigger failed:", error);
+      // Project is created and linked — it will auto-deploy on next push
       return NextResponse.json({
         success: true,
         url: `https://${vercelName}.vercel.app`,
         projectId: project.id,
-        note: "Project created and linked. It will auto-deploy from GitHub.",
+        note: "Project created and linked to GitHub. Push to the repo to trigger a build.",
       });
     }
 
     const deployment = await deployResponse.json();
     console.log("[deploy] Deployment triggered:", deployment.url);
 
+    // Use the clean project URL, not the unique deployment URL
     return NextResponse.json({
       success: true,
-      url: `https://${deployment.url}`,
+      url: `https://${vercelName}.vercel.app`,
       projectId: project.id,
       deploymentId: deployment.id,
     });

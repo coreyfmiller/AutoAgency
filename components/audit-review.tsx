@@ -34,6 +34,8 @@ export function AuditReview() {
   const [showPrompt, setShowPrompt] = useState(false)
   const [isUploadingLogo, setIsUploadingLogo] = useState(false)
   const [isUploadingHero, setIsUploadingHero] = useState(false)
+  const [dismissedLogo, setDismissedLogo] = useState(false)
+  const [dismissedHero, setDismissedHero] = useState(false)
 
   if (!auditResult || currentStep === "idle" || currentStep === "auditing") {
     return null
@@ -107,7 +109,7 @@ export function AuditReview() {
           <div className="space-y-3">
             <p className="text-xs text-muted-foreground uppercase tracking-wide">Identified Assets</p>
             <div className="grid grid-cols-2 gap-3">
-              {analysis.logoUrl && (
+              {analysis.logoUrl && !dismissedLogo && (
                 <div className="space-y-1">
                   <div className="relative rounded-lg overflow-hidden border border-primary/30 bg-secondary/50 p-2 h-20 flex items-center justify-center">
                     <img
@@ -116,13 +118,19 @@ export function AuditReview() {
                       className="max-h-full max-w-full object-contain"
                       onError={(e) => { (e.target as HTMLImageElement).style.display = "none" }}
                     />
-                    <span className="absolute top-1 right-1 text-[10px] px-1.5 py-0.5 rounded bg-primary text-primary-foreground font-medium">
+                    <span className="absolute top-1 left-1 text-[10px] px-1.5 py-0.5 rounded bg-primary text-primary-foreground font-medium">
                       LOGO
                     </span>
+                    <button
+                      onClick={() => setDismissedLogo(true)}
+                      className="absolute top-1 right-1 w-5 h-5 rounded-full bg-red-500/80 text-white flex items-center justify-center hover:bg-red-600 transition-colors"
+                    >
+                      <span className="text-xs font-bold">×</span>
+                    </button>
                   </div>
                 </div>
               )}
-              {analysis.heroImageUrl && (
+              {analysis.heroImageUrl && !dismissedHero && (
                 <div className="space-y-1">
                   <div className="relative rounded-lg overflow-hidden border border-accent/30 h-20">
                     <img
@@ -131,9 +139,15 @@ export function AuditReview() {
                       className="w-full h-full object-cover"
                       onError={(e) => { (e.target as HTMLImageElement).style.display = "none" }}
                     />
-                    <span className="absolute top-1 right-1 text-[10px] px-1.5 py-0.5 rounded bg-accent text-white font-medium">
+                    <span className="absolute top-1 left-1 text-[10px] px-1.5 py-0.5 rounded bg-accent text-white font-medium">
                       HERO
                     </span>
+                    <button
+                      onClick={() => setDismissedHero(true)}
+                      className="absolute top-1 right-1 w-5 h-5 rounded-full bg-red-500/80 text-white flex items-center justify-center hover:bg-red-600 transition-colors"
+                    >
+                      <span className="text-xs font-bold">×</span>
+                    </button>
                   </div>
                 </div>
               )}

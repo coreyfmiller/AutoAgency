@@ -228,17 +228,58 @@ export async function scrapeWebsite(url: string): Promise<ScrapedData> {
   // Extract images (top 20)
   const images: string[] = [];
   $("img").each((_, el) => {
-    const src = $(el).attr("src") || $(el).attr("data-src");
+    const src = $(el).attr("src") || $(el).attr("data-src") || $(el).attr("data-lazy-src");
     if (src && !src.includes("data:image/svg") && !src.includes("1x1")) {
       images.push(resolveUrl(url, src));
     }
+
+    // Parse srcset — grab the largest resolution
+    const srcset = $(el).attr("srcset");
+    if (srcset) {
+      const candidates = srcset.split(",").map((s) => {
+        const parts = s.trim().split(/\s+/);
+        const imgUrl = parts[0];
+        const descriptor = parts[1] || "1x";
+        const size = parseInt(descriptor) || 1;
+        return { url: imgUrl, size };
+      });
+      // Sort by size descending, take the largest
+      candidates.sort((a, b) => b.size - a.size);
+      if (candidates[0]?.url) {
+        images.push(resolveUrl(url, candidates[0].url));
+      }
+    }
   });
+
+  // Parse <picture> and <source> elements
+  $("picture source").each((_, el) => {
+    const srcset = $(el).attr("srcset");
+    if (srcset) {
+      const candidates = srcset.split(",").map((s) => {
+        const parts = s.trim().split(/\s+/);
+        return { url: parts[0], size: parseInt(parts[1]) || 1 };
+      });
+      candidates.sort((a, b) => b.size - a.size);
+      if (candidates[0]?.url) {
+        images.push(resolveUrl(url, candidates[0].url));
+      }
+    }
+  });
+
   // Background images from inline styles
-  $("[style*='background-image']").each((_, el) => {
+  $("[style*='background-image'], [style*='background:']").each((_, el) => {
     const style = $(el).attr("style") || "";
     const match = style.match(/url\(['"]?([^'")\s]+)['"]?\)/);
-    if (match) {
+    if (match && !match[1].includes("data:image/svg")) {
       images.push(resolveUrl(url, match[1]));
+    }
+  });
+
+  // data-background and other common lazy-load attributes
+  $("[data-background], [data-bg], [data-image]").each((_, el) => {
+    const bg = $(el).attr("data-background") || $(el).attr("data-bg") || $(el).attr("data-image");
+    if (bg && !bg.includes("data:image/svg")) {
+      images.push(resolveUrl(url, bg));
     }
   });
 

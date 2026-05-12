@@ -87,12 +87,11 @@ export default function Dashboard() {
               className="text-center space-y-6"
             >
               <div className="space-y-2">
-                <h2 className="text-3xl font-bold text-foreground tracking-tight text-balance">
-                  Automated Web Design Command Center
+                <h2 className="text-3xl font-bold text-foreground tracking-tight text-balance font-mono">
+                  <span className="text-primary">&gt;</span> URL in. Modern site out.
                 </h2>
-                <p className="text-muted-foreground max-w-xl mx-auto text-balance">
-                  Enter any website URL to audit, extract brand assets, and automatically rebuild
-                  with modern design patterns.
+                <p className="text-muted-foreground max-w-xl mx-auto text-balance font-mono text-sm">
+                  Scrape. Analyze. Generate. Deploy. Fully automated pipeline.
                 </p>
               </div>
               <UrlInput />
@@ -143,7 +142,7 @@ export default function Dashboard() {
           <footer className="border-t border-border/50 backdrop-blur-sm mt-12">
             <div className="max-w-[1600px] mx-auto px-6 py-6 flex flex-col md:flex-row items-center justify-between gap-4">
               <p className="text-sm text-muted-foreground">
-                AutoAgency Command Center v2.0
+                <span className="font-mono">ClientFactory</span> v2.0
               </p>
               <div className="flex items-center gap-6">
                 <span className="text-xs text-muted-foreground flex items-center gap-2">

@@ -84,9 +84,9 @@ export function AutogenLogo() {
       </div>
       <div>
         <h1 className="text-xl font-semibold tracking-tight text-foreground">
-          AutoGen Web
+          Client<span className="text-primary">Factory</span>
         </h1>
-        <p className="text-xs text-muted-foreground">Command Center</p>
+        <p className="text-xs text-muted-foreground font-mono">v2.0</p>
       </div>
     </div>
   )

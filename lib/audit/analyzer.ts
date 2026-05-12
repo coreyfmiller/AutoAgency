@@ -71,8 +71,8 @@ INSTRUCTIONS:
 1. Identify the business name, type, tagline, and what they do.
 2. Extract their real headline, services, CTA text, phone number, address.
 3. Classify each image as: logo, hero, team, product, testimonial, gallery, icon, or other.
-4. Pick the SINGLE best logo URL and SINGLE best hero/banner image URL.
-5. Write a concise v0 prompt (under 1500 chars) that will generate a modern rebuild of this site using their REAL business name, tagline, services, and content. Include ONLY the logo URL and hero image URL.
+4. Pick the SINGLE best logo URL and SINGLE best hero/banner image URL. If no clear logo or hero image can be identified from the URLs, set them to null — v0 will use placeholders.
+5. Write a concise v0 prompt (under 1500 chars) that will generate a modern rebuild of this site using their REAL business name, tagline, services, and content. Include ONLY the logo URL and hero image URL if they were found.
 
 The v0 prompt should:
 - Mention the business name and what they do
@@ -84,6 +84,7 @@ The v0 prompt should:
 - NOT include color codes (let v0 pick a modern palette)
 - NOT ask for placeholder text (use their real content)
 - Explicitly say "Use placeholder images for gallery/team/other sections — real images will be added later"
+- Based on the business type, include 1-2 sentences describing the design style v0 should use (layout approach, typography feel, visual weight, section style, symmetry vs asymmetry). For example: contractors get bold/masculine designs with large imagery; law firms get clean symmetrical layouts; restaurants get warm inviting designs with dark backgrounds.
 
 Respond ONLY with valid JSON (no markdown fences):
 {

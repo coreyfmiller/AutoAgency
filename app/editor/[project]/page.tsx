@@ -11,7 +11,6 @@ import {
   CheckCircle2,
   AlertCircle,
   ArrowLeft,
-  Clock,
 } from "lucide-react"
 import { useParams } from "next/navigation"
 import Link from "next/link"
@@ -21,10 +20,11 @@ interface FileInfo {
   sha: string;
 }
 
-interface EditHistoryItem {
-  instruction: string;
-  updatedFiles: string[];
+interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
   timestamp: number;
+  files?: string[];
 }
 
 export default function EditorPage() {
@@ -40,9 +40,8 @@ export default function EditorPage() {
 
   const [instruction, setInstruction] = useState("")
   const [isEditing, setIsEditing] = useState(false)
-  const [editHistory, setEditHistory] = useState<EditHistoryItem[]>([])
+  const [messages, setMessages] = useState<ChatMessage[]>([])
   const [error, setError] = useState<string | null>(null)
-  const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [iframeKey, setIframeKey] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
 
@@ -111,7 +110,6 @@ export default function EditorPage() {
 
     setIsEditing(true)
     setError(null)
-    setSuccessMessage(null)
 
     let message = instruction.trim()
     if (selectedImages.length > 0) {
@@ -120,6 +118,11 @@ export default function EditorPage() {
         ? `${message}\n\nUse these images: ${imageNames.join(", ")}`
         : `Add these images to the site: ${imageNames.join(", ")}`
     }
+
+    // Add user message to chat
+    setMessages((prev) => [...prev, { role: "user", content: message, timestamp: Date.now() }])
+    setInstruction("")
+    setSelectedImages([])
 
     try {
       const res = await fetch("/api/editor/edit", {
@@ -139,23 +142,30 @@ export default function EditorPage() {
         throw new Error(data.error || "Edit failed")
       }
 
-      setEditHistory((prev) => [
-        { instruction: message, updatedFiles: data.updatedFiles, timestamp: Date.now() },
-        ...prev,
-      ])
-      setSuccessMessage(data.message)
-      setInstruction("")
-      setSelectedImages([])
+      // Add assistant response
+      const filesUpdated = data.updatedFiles?.join(", ") || "unknown files"
+      setMessages((prev) => [...prev, {
+        role: "assistant",
+        content: `Done — updated ${filesUpdated}. Vercel will rebuild in ~30s. Hit refresh to see changes.`,
+        timestamp: Date.now(),
+        files: data.updatedFiles,
+      }])
 
       // Refresh file list
       await loadFiles()
 
-      // Auto-refresh iframe after 35 seconds (Vercel rebuild time)
+      // Auto-refresh iframe after 35 seconds
       setTimeout(() => {
         setIframeKey((k) => k + 1)
       }, 35000)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Edit failed")
+      const errorMsg = err instanceof Error ? err.message : "Edit failed"
+      setMessages((prev) => [...prev, {
+        role: "assistant",
+        content: `Error: ${errorMsg}`,
+        timestamp: Date.now(),
+      }])
+      setError(errorMsg)
     } finally {
       setIsEditing(false)
     }
@@ -268,17 +278,6 @@ export default function EditorPage() {
             </div>
 
             {/* Status Messages */}
-            {successMessage && (
-              <motion.div
-                initial={{ opacity: 0, y: -5 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="mt-3 flex items-center gap-2 px-3 py-2 rounded-lg bg-green-500/10 border border-green-500/20"
-              >
-                <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
-                <span className="text-xs text-green-600">{successMessage}</span>
-              </motion.div>
-            )}
-
             {error && (
               <motion.div
                 initial={{ opacity: 0, y: -5 }}
@@ -355,27 +354,46 @@ export default function EditorPage() {
             </div>
           )}
 
-          {/* Edit History */}
+          {/* Chat Thread */}
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
-            <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Edit History</h3>
-            {editHistory.length === 0 && (
-              <p className="text-xs text-muted-foreground">No edits yet. Send an instruction above.</p>
+            {messages.length === 0 && (
+              <div className="text-center py-8">
+                <p className="text-sm text-muted-foreground">Send an instruction to start editing.</p>
+                <p className="text-xs text-muted-foreground mt-1">e.g., "Add the deck photos to the gallery" or "Remove the testimonials section"</p>
+              </div>
             )}
-            {editHistory.map((edit, i) => (
-              <div key={i} className="p-3 rounded-xl bg-secondary/30 border border-border/50 space-y-1">
-                <p className="text-sm text-foreground">{edit.instruction}</p>
-                <div className="flex items-center gap-2">
-                  <Clock className="w-3 h-3 text-muted-foreground" />
-                  <span className="text-[10px] text-muted-foreground">
-                    {new Date(edit.timestamp).toLocaleTimeString()} — {edit.updatedFiles.join(", ")}
-                  </span>
+            {messages.map((msg, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 5 }}
+                animate={{ opacity: 1, y: 0 }}
+                className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+              >
+                <div
+                  className={`max-w-[85%] px-3 py-2 rounded-xl text-sm ${
+                    msg.role === "user"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-secondary/70 text-foreground border border-border/50"
+                  }`}
+                >
+                  <p className="whitespace-pre-wrap">{msg.content}</p>
+                  <p className={`text-[10px] mt-1 ${msg.role === "user" ? "text-primary-foreground/60" : "text-muted-foreground"}`}>
+                    {new Date(msg.timestamp).toLocaleTimeString()}
+                  </p>
+                </div>
+              </motion.div>
+            ))}
+            {isEditing && (
+              <div className="flex justify-start">
+                <div className="px-3 py-2 rounded-xl bg-secondary/70 border border-border/50">
+                  <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
                 </div>
               </div>
-            ))}
+            )}
           </div>
 
           {/* File List */}
-          <div className="p-4 border-t border-border/50 max-h-40 overflow-y-auto">
+          <div className="p-4 border-t border-border/50 max-h-32 overflow-y-auto">
             <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
               Project Files ({files.length})
             </h3>

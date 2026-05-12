@@ -8,6 +8,7 @@ import {
   Image as ImageIcon,
   X,
   CheckCircle2,
+  ExternalLink,
 } from "lucide-react"
 import { useProjectStore } from "@/lib/store"
 

@@ -20,6 +20,8 @@ export function AuditReview() {
     auditResult,
     customInstructions,
     setCustomInstructions,
+    useScrapedImages,
+    setUseScrapedImages,
     startGeneration,
     generatedCode,
     demoUrl,
@@ -193,6 +195,32 @@ export function AuditReview() {
             </pre>
           </motion.div>
         )}
+
+        {/* Image Toggle */}
+        <div className="flex items-center gap-3 p-3 rounded-xl bg-secondary/30 border border-border/50">
+          <button
+            onClick={() => setUseScrapedImages(!useScrapedImages)}
+            className={`relative w-10 h-5 rounded-full transition-colors ${
+              useScrapedImages ? "bg-primary" : "bg-muted-foreground/30"
+            }`}
+          >
+            <div
+              className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${
+                useScrapedImages ? "translate-x-5" : "translate-x-0.5"
+              }`}
+            />
+          </button>
+          <div>
+            <p className="text-sm font-medium text-foreground">
+              {useScrapedImages ? "Use scraped images" : "Let v0 generate all images"}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {useScrapedImages
+                ? "Logo and hero image from the original site"
+                : "v0 will use its own placeholder/stock images for everything"}
+            </p>
+          </div>
+        </div>
 
         {/* Custom Instructions */}
         <div className="space-y-2">

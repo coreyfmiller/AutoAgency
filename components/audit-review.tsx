@@ -24,13 +24,16 @@ export function AuditReview() {
     setUseScrapedImages,
     customLogoUrl,
     setCustomLogoUrl,
+    customHeroUrl,
+    setCustomHeroUrl,
     startGeneration,
     generatedCode,
     demoUrl,
   } = useProjectStore()
 
   const [showPrompt, setShowPrompt] = useState(false)
-  const [isUploading, setIsUploading] = useState(false)
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false)
+  const [isUploadingHero, setIsUploadingHero] = useState(false)
 
   if (!auditResult || currentStep === "idle" || currentStep === "auditing") {
     return null
@@ -136,8 +139,8 @@ export function AuditReview() {
               )}
             </div>
 
-            {/* Upload custom logo */}
-            <div className="mt-3">
+            {/* Upload custom logo & hero */}
+            <div className="mt-3 space-y-2">
               <label className="flex items-center gap-2 px-3 py-2 rounded-lg bg-secondary/50 border border-border/50 cursor-pointer hover:bg-secondary/80 transition-colors text-sm text-muted-foreground">
                 <input
                   type="file"
@@ -146,7 +149,7 @@ export function AuditReview() {
                   onChange={async (e) => {
                     const file = e.target.files?.[0]
                     if (!file) return
-                    setIsUploading(true)
+                    setIsUploadingLogo(true)
                     try {
                       const formData = new FormData()
                       formData.append("file", file)
@@ -156,15 +159,45 @@ export function AuditReview() {
                         setCustomLogoUrl(data.url)
                       }
                     } catch {}
-                    setIsUploading(false)
+                    setIsUploadingLogo(false)
                   }}
                 />
-                {isUploading ? "Uploading..." : customLogoUrl ? "✓ Custom logo uploaded" : "Upload custom logo"}
+                {isUploadingLogo ? "Uploading..." : customLogoUrl ? "✓ Custom logo uploaded" : "📁 Upload logo"}
               </label>
               {customLogoUrl && (
-                <div className="mt-2 flex items-center gap-2">
+                <div className="flex items-center gap-2 pl-2">
                   <img src={customLogoUrl} alt="Custom logo" className="h-8 object-contain" />
                   <button onClick={() => setCustomLogoUrl(null)} className="text-xs text-red-500">Remove</button>
+                </div>
+              )}
+
+              <label className="flex items-center gap-2 px-3 py-2 rounded-lg bg-secondary/50 border border-border/50 cursor-pointer hover:bg-secondary/80 transition-colors text-sm text-muted-foreground">
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0]
+                    if (!file) return
+                    setIsUploadingHero(true)
+                    try {
+                      const formData = new FormData()
+                      formData.append("file", file)
+                      const res = await fetch("/api/upload", { method: "POST", body: formData })
+                      if (res.ok) {
+                        const data = await res.json()
+                        setCustomHeroUrl(data.url)
+                      }
+                    } catch {}
+                    setIsUploadingHero(false)
+                  }}
+                />
+                {isUploadingHero ? "Uploading..." : customHeroUrl ? "✓ Custom hero uploaded" : "📁 Upload hero image"}
+              </label>
+              {customHeroUrl && (
+                <div className="flex items-center gap-2 pl-2">
+                  <img src={customHeroUrl} alt="Custom hero" className="h-12 w-24 object-cover rounded" />
+                  <button onClick={() => setCustomHeroUrl(null)} className="text-xs text-red-500">Remove</button>
                 </div>
               )}
             </div>

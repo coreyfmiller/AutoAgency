@@ -45,6 +45,7 @@ export interface ProjectState {
   customInstructions: string;
   useScrapedImages: boolean;
   customLogoUrl: string | null;
+  customHeroUrl: string | null;
   generatedCode: string | null;
   generatedFiles: GeneratedFile[];
   demoUrl: string | null;
@@ -66,6 +67,7 @@ export interface ProjectState {
   setCustomInstructions: (instructions: string) => void;
   setUseScrapedImages: (use: boolean) => void;
   setCustomLogoUrl: (url: string | null) => void;
+  setCustomHeroUrl: (url: string | null) => void;
   startGeneration: () => Promise<void>;
   sendEdit: (message: string) => Promise<void>;
   pushToGitHub: (projectName: string) => Promise<void>;
@@ -84,6 +86,7 @@ export const useProjectStore = create<ProjectState>()(
       customInstructions: "",
       useScrapedImages: true,
       customLogoUrl: null,
+      customHeroUrl: null,
       generatedCode: null,
       generatedFiles: [],
       demoUrl: null,
@@ -135,8 +138,10 @@ export const useProjectStore = create<ProjectState>()(
 
       setCustomLogoUrl: (url) => set({ customLogoUrl: url }),
 
+      setCustomHeroUrl: (url) => set({ customHeroUrl: url }),
+
       startGeneration: async () => {
-        const { auditResult, customInstructions, useScrapedImages, customLogoUrl } = get();
+        const { auditResult, customInstructions, useScrapedImages, customLogoUrl, customHeroUrl } = get();
         if (!auditResult) return;
 
         set({ currentStep: "generating", error: null });
@@ -148,7 +153,8 @@ export const useProjectStore = create<ProjectState>()(
             body: JSON.stringify({
               v0Prompt: auditResult.analysis.v0Prompt,
               customInstructions: [
-                customLogoUrl ? `Use this logo instead: ${customLogoUrl}` : "",
+                customLogoUrl ? `Use this logo: ${customLogoUrl}` : "",
+                customHeroUrl ? `Use this hero image: ${customHeroUrl}` : "",
                 customInstructions,
               ].filter(Boolean).join(" ") || undefined,
               skipImages: !useScrapedImages,
@@ -316,6 +322,7 @@ export const useProjectStore = create<ProjectState>()(
           customInstructions: "",
           useScrapedImages: true,
           customLogoUrl: null,
+          customHeroUrl: null,
           generatedCode: null,
           generatedFiles: [],
           demoUrl: null,
@@ -346,6 +353,7 @@ export const useProjectStore = create<ProjectState>()(
         customInstructions: state.customInstructions,
         useScrapedImages: state.useScrapedImages,
         customLogoUrl: state.customLogoUrl,
+        customHeroUrl: state.customHeroUrl,
         generatedCode: state.generatedCode,
         generatedFiles: state.generatedFiles,
         demoUrl: state.demoUrl,

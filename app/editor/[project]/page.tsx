@@ -293,7 +293,36 @@ export default function EditorPage() {
 
           {/* Media Panel */}
           {showMediaPanel && (
-            <div className="p-4 border-b border-border/50 max-h-48 overflow-y-auto">
+            <div className="p-4 border-b border-border/50 max-h-56 overflow-y-auto">
+              {/* Upload button */}
+              <label className="flex items-center justify-center gap-1.5 mb-2 px-3 py-2 rounded-lg border border-dashed border-border cursor-pointer hover:bg-secondary/50 transition-colors">
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={async (e) => {
+                    const fileList = e.target.files
+                    if (!fileList || !repoFullName) return
+                    for (let i = 0; i < fileList.length; i++) {
+                      const file = fileList[i]
+                      const formData = new FormData()
+                      formData.append("file", file)
+                      formData.append("repoFullName", repoFullName)
+                      try {
+                        const res = await fetch("/api/editor/upload-image", { method: "POST", body: formData })
+                        if (res.ok) {
+                          const data = await res.json()
+                          setImages((prev) => [...prev, data.filename])
+                        }
+                      } catch {}
+                    }
+                    e.target.value = ""
+                  }}
+                />
+                <span className="text-xs text-muted-foreground">+ Upload images</span>
+              </label>
+
               <div className="grid grid-cols-4 gap-1.5">
                 {images.map((img, i) => {
                   const isUrl = img.startsWith("http")

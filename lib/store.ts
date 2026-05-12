@@ -3,7 +3,7 @@
 import { create } from "zustand";
 import type { AnalysisResult } from "./audit/analyzer";
 
-export type PipelineStep = "idle" | "auditing" | "reviewing" | "generating" | "deploying" | "complete" | "error";
+export type PipelineStep = "idle" | "auditing" | "reviewing" | "generating" | "workspace" | "error";
 
 export interface ScrapedInfo {
   url: string;
@@ -26,6 +26,11 @@ export interface AuditResult {
   analysis: AnalysisResult;
 }
 
+export interface GeneratedFile {
+  name: string;
+  content: string;
+}
+
 export interface ProjectState {
   // Pipeline state
   currentStep: PipelineStep;
@@ -38,18 +43,28 @@ export interface ProjectState {
   // Generation
   customInstructions: string;
   generatedCode: string | null;
+  generatedFiles: GeneratedFile[];
   demoUrl: string | null;
+  chatId: string | null;
 
-  // Deployment
-  deploymentUrl: string | null;
+  // Deploy state
   githubUrl: string | null;
+  deploymentUrl: string | null;
+  isDeploying: boolean;
+  isPushingToGit: boolean;
+
+  // Edit state
+  editHistory: { message: string; timestamp: number }[];
+  isEditing: boolean;
 
   // Actions
   setTargetUrl: (url: string) => void;
   startAudit: () => Promise<void>;
   setCustomInstructions: (instructions: string) => void;
   startGeneration: () => Promise<void>;
-  startDeployment: (projectName: string) => Promise<void>;
+  sendEdit: (message: string) => Promise<void>;
+  pushToGitHub: (projectName: string) => Promise<void>;
+  deployToVercel: (projectName: string) => Promise<void>;
   reset: () => void;
 }
 
@@ -60,9 +75,15 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   auditResult: null,
   customInstructions: "",
   generatedCode: null,
+  generatedFiles: [],
   demoUrl: null,
-  deploymentUrl: null,
+  chatId: null,
   githubUrl: null,
+  deploymentUrl: null,
+  isDeploying: false,
+  isPushingToGit: false,
+  editHistory: [],
+  isEditing: false,
 
   setTargetUrl: (url) => set({ targetUrl: url }),
 
@@ -124,8 +145,10 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       const data = await response.json();
       set({
         generatedCode: data.generatedCode,
+        generatedFiles: data.files || [],
         demoUrl: data.demoUrl,
-        currentStep: "complete",
+        chatId: data.chatId,
+        currentStep: "workspace",
       });
     } catch (error) {
       set({
@@ -135,21 +158,89 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     }
   },
 
-  startDeployment: async (projectName) => {
-    const { generatedCode, auditResult } = get();
-    if (!generatedCode || !auditResult) return;
+  sendEdit: async (message: string) => {
+    const { chatId } = get();
+    if (!chatId) return;
 
-    set({ currentStep: "deploying", error: null });
+    set({ isEditing: true });
+
+    try {
+      const response = await fetch("/api/edit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chatId, message }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Edit failed");
+      }
+
+      const data = await response.json();
+      set((state) => ({
+        generatedCode: data.generatedCode || state.generatedCode,
+        generatedFiles: data.files || state.generatedFiles,
+        demoUrl: data.demoUrl || state.demoUrl,
+        isEditing: false,
+        editHistory: [
+          ...state.editHistory,
+          { message, timestamp: Date.now() },
+        ],
+      }));
+    } catch (error) {
+      set({
+        isEditing: false,
+        error: error instanceof Error ? error.message : "Edit failed",
+      });
+    }
+  },
+
+  pushToGitHub: async (projectName: string) => {
+    const { generatedFiles, auditResult } = get();
+    if (!generatedFiles.length || !auditResult) return;
+
+    set({ isPushingToGit: true });
+
+    try {
+      const response = await fetch("/api/github", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          projectName,
+          files: generatedFiles,
+          brandName: auditResult.analysis.businessName,
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "GitHub push failed");
+      }
+
+      const data = await response.json();
+      set({
+        githubUrl: data.url,
+        isPushingToGit: false,
+      });
+    } catch (error) {
+      set({
+        isPushingToGit: false,
+        error: error instanceof Error ? error.message : "GitHub push failed",
+      });
+    }
+  },
+
+  deployToVercel: async (projectName: string) => {
+    const { githubUrl } = get();
+    if (!githubUrl) return;
+
+    set({ isDeploying: true });
 
     try {
       const response = await fetch("/api/deploy", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          projectName,
-          generatedCode,
-          brandName: auditResult.analysis.businessName,
-        }),
+        body: JSON.stringify({ projectName, githubUrl }),
       });
 
       if (!response.ok) {
@@ -159,13 +250,12 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
       const data = await response.json();
       set({
-        deploymentUrl: data.vercel.url,
-        githubUrl: data.github.url,
-        currentStep: "complete",
+        deploymentUrl: data.url,
+        isDeploying: false,
       });
     } catch (error) {
       set({
-        currentStep: "error",
+        isDeploying: false,
         error: error instanceof Error ? error.message : "Deployment failed",
       });
     }
@@ -179,8 +269,14 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       auditResult: null,
       customInstructions: "",
       generatedCode: null,
+      generatedFiles: [],
       demoUrl: null,
-      deploymentUrl: null,
+      chatId: null,
       githubUrl: null,
+      deploymentUrl: null,
+      isDeploying: false,
+      isPushingToGit: false,
+      editHistory: [],
+      isEditing: false,
     }),
 }));

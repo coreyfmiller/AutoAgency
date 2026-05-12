@@ -148,10 +148,10 @@ export const useProjectStore = create<ProjectState>()(
             body: JSON.stringify({
               v0Prompt: auditResult.analysis.v0Prompt,
               customInstructions: [
-                !useScrapedImages ? "Do not use any of the provided image URLs. Use v0's own generated placeholder images for all sections." : "",
                 customLogoUrl ? `Use this logo instead: ${customLogoUrl}` : "",
                 customInstructions,
-              ].filter(Boolean).join(" "),
+              ].filter(Boolean).join(" ") || undefined,
+              skipImages: !useScrapedImages,
             }),
           });
 

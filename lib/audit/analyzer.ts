@@ -75,7 +75,7 @@ INSTRUCTIONS:
 5. Write a SHORT v0 prompt (under 500 chars) that keeps it simple and trusts v0 to design well.
 
 The v0 prompt should follow this format:
-"Build a modern website for [Business Name], a [business type] in [location if known]. Use their content from [url]. Their services: [list]. Phone: [number]. Use this logo: [url]. Use this hero image: [url]. Use placeholder images for other sections."
+"Build a modern website for [Business Name], a [business type] in [location if known]. Use their content from [url]. Their services: [list]. Phone: [number]. Use this logo: [url]. Use this hero image: [url]."
 
 Keep it short. Trust v0 to handle the design.
 

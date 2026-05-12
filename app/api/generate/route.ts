@@ -6,16 +6,29 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   try {
-    const { v0Prompt, customInstructions } = await request.json();
+    const { v0Prompt, customInstructions, skipImages } = await request.json();
 
     if (!v0Prompt) {
       return NextResponse.json({ error: "v0Prompt is required" }, { status: 400 });
     }
 
+    // If skipImages, remove any image URLs from the prompt so v0 uses its own
+    let prompt = v0Prompt;
+    if (skipImages) {
+      prompt = prompt
+        .replace(/Use this logo[^.]*\./gi, "")
+        .replace(/Use this hero image[^.]*\./gi, "")
+        .replace(/Logo:[^\n]*/gi, "")
+        .replace(/Hero image[^\n]*/gi, "")
+        .replace(/https?:\/\/[^\s"')]+\.(jpg|jpeg|png|svg|webp|gif)[^\s"')]*\s*/gi, "")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
     // Append custom instructions if provided
     const finalPrompt = customInstructions
-      ? `${v0Prompt}\n\nAdditional requirements: ${customInstructions}`
-      : v0Prompt;
+      ? `${prompt}\n\nAdditional requirements: ${customInstructions}`
+      : prompt;
 
     console.log("[generate] Sending to v0:", finalPrompt.slice(0, 200) + "...");
 

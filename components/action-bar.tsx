@@ -138,43 +138,41 @@ export function ActionBar() {
         {/* Push to GitHub */}
         <button
           onClick={handlePushToGit}
-          disabled={isPushingToGit || !!githubUrl}
+          disabled={isPushingToGit}
           className={`px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-all ${
             githubUrl
-              ? "bg-muted/50 text-muted-foreground border border-border/50 opacity-60"
+              ? "bg-muted/50 text-muted-foreground border border-border/50 hover:bg-secondary hover:text-foreground"
               : "bg-gradient-to-r from-primary to-accent text-primary-foreground shadow-lg shadow-primary/20"
-          } disabled:cursor-not-allowed`}
+          } disabled:cursor-not-allowed disabled:opacity-60`}
         >
           {isPushingToGit ? (
             <Loader2 className="w-4 h-4 animate-spin" />
           ) : githubUrl ? (
-            <CheckCircle2 className="w-4 h-4" />
+            <Github className="w-4 h-4" />
           ) : (
             <Github className="w-4 h-4" />
           )}
-          {isPushingToGit ? "Pushing..." : githubUrl ? "Pushed to GitHub" : "Push to GitHub"}
+          {isPushingToGit ? "Pushing..." : githubUrl ? "Re-push to GitHub" : "Push to GitHub"}
         </button>
 
         {/* Deploy to Vercel */}
         <button
           onClick={handleDeploy}
-          disabled={isDeploying || !githubUrl || !!deploymentUrl}
+          disabled={isDeploying || !githubUrl}
           className={`px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-all ${
             deploymentUrl
-              ? "bg-muted/50 text-muted-foreground border border-border/50 opacity-60"
-              : githubUrl && !deploymentUrl
+              ? "bg-muted/50 text-muted-foreground border border-border/50 hover:bg-secondary hover:text-foreground"
+              : githubUrl
                 ? "bg-gradient-to-r from-primary to-accent text-primary-foreground shadow-lg shadow-primary/20"
                 : "bg-secondary text-muted-foreground"
-          } disabled:cursor-not-allowed`}
+          } disabled:cursor-not-allowed disabled:opacity-60`}
         >
           {isDeploying ? (
             <Loader2 className="w-4 h-4 animate-spin" />
-          ) : deploymentUrl ? (
-            <CheckCircle2 className="w-4 h-4" />
           ) : (
             <Rocket className="w-4 h-4" />
           )}
-          {isDeploying ? "Deploying..." : deploymentUrl ? "Deployed to Vercel" : "Deploy to Vercel"}
+          {isDeploying ? "Deploying..." : deploymentUrl ? "Re-deploy to Vercel" : "Deploy to Vercel"}
         </button>
 
         {/* Open Editor */}

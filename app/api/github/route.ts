@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
 
     console.log("[github] Creating repo:", repoName);
 
-    // Create the repository
+    // Try to create the repository — if it already exists, we'll update it
     const createRepoRes = await fetch("https://api.github.com/user/repos", {
       method: "POST",
       headers: {
@@ -104,18 +104,23 @@ export async function POST(request: NextRequest) {
       }),
     });
 
-    if (!createRepoRes.ok) {
-      const error = await createRepoRes.text();
-      throw new Error(`GitHub repo creation failed: ${error}`);
+    let fullName: string;
+    let repoUrl: string;
+
+    if (createRepoRes.ok) {
+      const repo = await createRepoRes.json();
+      fullName = repo.full_name;
+      repoUrl = repo.html_url;
+      console.log("[github] Repo created:", fullName);
+      // Wait for GitHub to initialize new repo
+      await new Promise((r) => setTimeout(r, 2000));
+    } else {
+      // Repo likely already exists — use it
+      const owner = process.env.GITHUB_OWNER || "coreyfmiller";
+      fullName = `${owner}/${repoName}`;
+      repoUrl = `https://github.com/${fullName}`;
+      console.log("[github] Repo already exists, updating:", fullName);
     }
-
-    const repo = await createRepoRes.json();
-    const fullName = repo.full_name;
-
-    console.log("[github] Repo created:", fullName);
-
-    // Wait for GitHub to initialize
-    await new Promise((r) => setTimeout(r, 2000));
 
     // Determine which scaffold files are needed (only add if v0 didn't provide them)
     const fileNames = new Set(files.map((f: { name: string }) => f.name));
@@ -210,9 +215,25 @@ export async function POST(request: NextRequest) {
     // Combine v0 files + scaffold files
     const allFiles = [...files, ...scaffoldFiles];
 
-    // Push all files
+    // Push all files (get SHA first if file exists for updates)
     for (const file of allFiles) {
       if (!file.name || !file.content) continue;
+
+      // Check if file already exists to get its SHA
+      let sha: string | undefined;
+      const existingRes = await fetch(
+        `https://api.github.com/repos/${fullName}/contents/${file.name}`,
+        {
+          headers: {
+            Authorization: `token ${process.env.GITHUB_TOKEN}`,
+            Accept: "application/vnd.github.v3+json",
+          },
+        }
+      );
+      if (existingRes.ok) {
+        const existing = await existingRes.json();
+        sha = existing.sha;
+      }
 
       const res = await fetch(
         `https://api.github.com/repos/${fullName}/contents/${file.name}`,
@@ -224,8 +245,9 @@ export async function POST(request: NextRequest) {
             Accept: "application/vnd.github.v3+json",
           },
           body: JSON.stringify({
-            message: `Add ${file.name}`,
+            message: sha ? `Update ${file.name}` : `Add ${file.name}`,
             content: Buffer.from(file.content).toString("base64"),
+            ...(sha ? { sha } : {}),
           }),
         }
       );
@@ -304,7 +326,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      url: repo.html_url,
+      url: repoUrl,
       fullName,
       repoName,
       imagesSaved: savedImages,

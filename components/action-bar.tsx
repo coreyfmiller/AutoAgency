@@ -192,9 +192,18 @@ export function ActionBar() {
         {githubUrl && (
           <button
             onClick={() => {
-              const cloneUrl = `${githubUrl}.git`
-              navigator.clipboard.writeText(`git clone ${cloneUrl}`)
-              alert(`Copied to clipboard:\ngit clone ${cloneUrl}\n\nPaste in your terminal, then open the folder in Kiro.`)
+              const repoName = (projectName || defaultProjectName)
+                .toLowerCase()
+                .replace(/[^a-z0-9-]/g, "-")
+                .replace(/-+/g, "-")
+              const batContent = `@echo off\r\ncd /d "%USERPROFILE%\\Desktop\\Projects"\r\nif not exist "${repoName}" (\r\n  git clone ${githubUrl}.git\r\n) else (\r\n  cd ${repoName}\r\n  git pull\r\n  cd ..\r\n)\r\nkiro "${repoName}"\r\n`
+              const blob = new Blob([batContent], { type: "application/bat" })
+              const url = URL.createObjectURL(blob)
+              const a = document.createElement("a")
+              a.href = url
+              a.download = `open-${repoName}-in-kiro.bat`
+              a.click()
+              URL.revokeObjectURL(url)
             }}
             className="px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 bg-secondary text-foreground hover:bg-secondary/80 transition-colors"
           >

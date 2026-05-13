@@ -188,6 +188,21 @@ export function ActionBar() {
           </Link>
         )}
 
+        {/* Open in Kiro */}
+        {githubUrl && (
+          <button
+            onClick={() => {
+              const cloneUrl = `${githubUrl}.git`
+              navigator.clipboard.writeText(`git clone ${cloneUrl}`)
+              alert(`Copied to clipboard:\ngit clone ${cloneUrl}\n\nPaste in your terminal, then open the folder in Kiro.`)
+            }}
+            className="px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 bg-secondary text-foreground hover:bg-secondary/80 transition-colors"
+          >
+            <ExternalLink className="w-4 h-4" />
+            Open in Kiro
+          </button>
+        )}
+
         <div className="flex-1" />
 
         {/* Regenerate */}

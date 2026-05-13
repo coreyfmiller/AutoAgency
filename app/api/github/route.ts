@@ -231,6 +231,7 @@ export async function POST(request: NextRequest) {
     const urlReplacements: { from: string; to: string }[] = [];
 
     if (logoUrl) {
+      console.log("[github] Downloading logo from:", logoUrl);
       const result = await downloadImage(logoUrl);
       if (result) {
         const logoFilename = `logo.${result.extension}`;
@@ -240,11 +241,14 @@ export async function POST(request: NextRequest) {
           encoding: "base64",
         });
         urlReplacements.push({ from: logoUrl, to: `/images/${logoFilename}` });
-        console.log("[github] Downloaded logo:", logoFilename);
+        console.log("[github] Downloaded logo:", logoFilename, `(${result.buffer.length} bytes)`);
+      } else {
+        console.error("[github] Failed to download logo from:", logoUrl);
       }
     }
 
     if (heroUrl) {
+      console.log("[github] Downloading hero from:", heroUrl);
       const result = await downloadImage(heroUrl);
       if (result) {
         const heroFilename = `hero.${result.extension}`;
@@ -254,7 +258,9 @@ export async function POST(request: NextRequest) {
           encoding: "base64",
         });
         urlReplacements.push({ from: heroUrl, to: `/images/${heroFilename}` });
-        console.log("[github] Downloaded hero:", heroFilename);
+        console.log("[github] Downloaded hero:", heroFilename, `(${result.buffer.length} bytes)`);
+      } else {
+        console.error("[github] Failed to download hero from:", heroUrl);
       }
     }
 
@@ -266,8 +272,26 @@ export async function POST(request: NextRequest) {
 
       let content = file.content;
       for (const replacement of urlReplacements) {
+        // Try exact match first
         content = content.replaceAll(replacement.from, replacement.to);
+        // Also try URL-encoded version
+        content = content.replaceAll(encodeURI(replacement.from), replacement.to);
+        // Try without protocol
+        const withoutProtocol = replacement.from.replace(/^https?:\/\//, "");
+        content = content.replaceAll(withoutProtocol, replacement.to);
       }
+
+      // Also find any remaining blob.vercel-storage.com URLs and replace with local path
+      content = content.replace(
+        /https?:\/\/[^"'\s)]+\.blob\.vercel-storage\.com\/[^"'\s)]+/g,
+        (match) => {
+          // Extract filename from blob URL
+          const parts = match.split("/");
+          const rawName = parts[parts.length - 1].split("?")[0];
+          const cleanName = rawName.replace(/[^a-z0-9.-]/gi, "-").toLowerCase();
+          return `/images/${cleanName}`;
+        }
+      );
 
       allFilesToCommit.push({
         path: file.name,

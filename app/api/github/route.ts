@@ -235,8 +235,14 @@ export async function POST(request: NextRequest) {
       const result = await downloadImage(logoUrl);
       if (result) {
         const logoFilename = `logo.${result.extension}`;
+        // Save to both public/images/ and public/ root to cover all cases
         allFilesToCommit.push({
           path: `public/images/${logoFilename}`,
+          content: result.buffer,
+          encoding: "base64",
+        });
+        allFilesToCommit.push({
+          path: `public/${logoFilename}`,
           content: result.buffer,
           encoding: "base64",
         });
@@ -252,8 +258,14 @@ export async function POST(request: NextRequest) {
       const result = await downloadImage(heroUrl);
       if (result) {
         const heroFilename = `hero.${result.extension}`;
+        // Save to both public/images/ and public/ root to cover all cases
         allFilesToCommit.push({
           path: `public/images/${heroFilename}`,
+          content: result.buffer,
+          encoding: "base64",
+        });
+        allFilesToCommit.push({
+          path: `public/${heroFilename}`,
           content: result.buffer,
           encoding: "base64",
         });

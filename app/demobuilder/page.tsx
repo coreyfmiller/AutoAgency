@@ -61,16 +61,46 @@ export default function DemoBuilderPage() {
 
   const addJob = useCallback(() => {
     if (!newProjectName.trim() || !newPrompt.trim()) return
+    
+    // Sanitize and validate project name
+    const sanitized = newProjectName
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9-]/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$/g, "")
+    
+    if (sanitized.length < 3) {
+      alert("Project name must be at least 3 characters")
+      return
+    }
+    if (sanitized.length > 50) {
+      alert("Project name must be under 50 characters")
+      return
+    }
+    
+    // Check for common typos — double letters that shouldn't be there
+    const suspiciousDoubles = sanitized.match(/(.)\1{2,}/g)
+    if (suspiciousDoubles) {
+      if (!confirm(`Project name "${sanitized}" has repeated characters (${suspiciousDoubles.join(", ")}). Continue anyway?`)) return
+    }
+    
+    // Check if name already exists in queue
+    if (jobs.some(j => j.projectName === sanitized)) {
+      alert(`"${sanitized}" is already in the queue`)
+      return
+    }
+
     const job: DemoJob = {
       id: makeJobId(),
-      projectName: newProjectName.trim().toLowerCase().replace(/[^a-z0-9-]/g, "-"),
+      projectName: sanitized,
       prompt: newPrompt.trim(),
       status: "queued",
     }
     setJobs((prev) => [...prev, job])
     setNewProjectName("")
     setNewPrompt("")
-  }, [newProjectName, newPrompt])
+  }, [newProjectName, newPrompt, jobs])
 
   const loadPreset = useCallback((preset: typeof INDUSTRY_PRESETS[number]) => {
     setNewProjectName(preset.projectName)
@@ -145,7 +175,26 @@ export default function DemoBuilderPage() {
           throw new Error(err.error || "Deploy failed")
         }
         const deployData = await deployRes.json()
-        updateJob(job.id, { status: "done", deploymentUrl: deployData.url })
+        
+        // Step 4: Poll until deployment is actually ready (up to 90 seconds)
+        const deployUrl = deployData.url
+        let ready = false
+        for (let i = 0; i < 18; i++) {
+          await new Promise(r => setTimeout(r, 5000))
+          try {
+            const check = await fetch(deployUrl, { method: "HEAD", redirect: "follow" })
+            if (check.ok || check.status === 308 || check.status === 307) {
+              ready = true
+              break
+            }
+          } catch {}
+        }
+        
+        updateJob(job.id, { 
+          status: "done", 
+          deploymentUrl: deployUrl,
+          error: ready ? undefined : "Deployed but site may still be building. Check in 1-2 minutes."
+        })
       } catch (error) {
         updateJob(job.id, {
           status: "error",
@@ -216,6 +265,11 @@ export default function DemoBuilderPage() {
               onChange={(e) => setNewProjectName(e.target.value)}
               className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/40"
             />
+            {newProjectName.trim() && (
+              <p className="mt-1 text-xs text-muted-foreground">
+                Will deploy to: <span className="font-mono text-primary">{newProjectName.trim().toLowerCase().replace(/[^a-z0-9-]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "")}.vercel.app</span>
+              </p>
+            )}
           </div>
 
           {/* Prompt */}

@@ -210,6 +210,17 @@ export default function DemoBuilderPage() {
     updateJob(job.id, { status: "queued", error: undefined, githubUrl: undefined, deploymentUrl: undefined, demoUrl: undefined })
   }, [updateJob])
 
+  const deleteJob = useCallback(async (job: DemoJob) => {
+    try {
+      await fetch("/api/delete-project", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectName: job.projectName }),
+      })
+    } catch {}
+    setJobs((prev) => prev.filter((j) => j.id !== job.id))
+  }, [])
+
   const queuedCount = jobs.filter((j) => j.status === "queued").length
   const doneCount = jobs.filter((j) => j.status === "done").length
 
@@ -337,6 +348,7 @@ export default function DemoBuilderPage() {
                   job={job}
                   onRemove={() => removeJob(job.id)}
                   onRetry={() => retryJob(job)}
+                  onDelete={() => deleteJob(job)}
                 />
               ))}
             </div>
@@ -379,8 +391,15 @@ export default function DemoBuilderPage() {
   )
 }
 
-function JobCard({ job, onRemove, onRetry }: { job: DemoJob; onRemove: () => void; onRetry: () => void }) {
+function JobCard({ job, onRemove, onRetry, onDelete }: { job: DemoJob; onRemove: () => void; onRetry: () => void; onDelete: () => void }) {
   const [showPrompt, setShowPrompt] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+
+  const handleDelete = async () => {
+    if (!confirm(`Delete "${job.projectName}"? This removes the Vercel site and GitHub repo permanently.`)) return
+    setIsDeleting(true)
+    onDelete()
+  }
 
   const statusConfig: Record<JobStatus, { icon: typeof Loader2; label: string; color: string }> = {
     queued: { icon: Rocket, label: "Queued", color: "text-muted-foreground" },
@@ -419,7 +438,7 @@ function JobCard({ job, onRemove, onRetry }: { job: DemoJob; onRemove: () => voi
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
           {job.status === "error" && (
-            <button type="button" onClick={onRetry} className="p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
+            <button type="button" onClick={onRetry} className="p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground" title="Retry">
               <RotateCcw className="size-3.5" />
             </button>
           )}
@@ -427,12 +446,24 @@ function JobCard({ job, onRemove, onRetry }: { job: DemoJob; onRemove: () => voi
             type="button"
             onClick={() => setShowPrompt((s) => !s)}
             className="p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+            title="Show prompt"
           >
             <Copy className="size-3.5" />
           </button>
           {job.status === "queued" && (
-            <button type="button" onClick={onRemove} className="p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-red-400">
+            <button type="button" onClick={onRemove} className="p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-red-400" title="Remove from queue">
               <Trash2 className="size-3.5" />
+            </button>
+          )}
+          {(job.status === "done" || job.status === "error") && (
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="p-1.5 rounded-md hover:bg-red-500/10 transition-colors text-muted-foreground hover:text-red-400 disabled:opacity-50"
+              title="Delete project (removes Vercel + GitHub)"
+            >
+              {isDeleting ? <Loader2 className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />}
             </button>
           )}
         </div>

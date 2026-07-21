@@ -33,9 +33,16 @@ export async function POST(request: NextRequest) {
     console.log("[generate] Sending to v0:", finalPrompt.slice(0, 200) + "...");
 
     // Create a chat with v0 SDK
-    const chat = await v0.chats.create({
-      message: finalPrompt,
-    });
+    let chat;
+    try {
+      chat = await v0.chats.create({
+        message: finalPrompt,
+      });
+    } catch (sdkError: any) {
+      console.error("[generate] v0 SDK error:", sdkError);
+      const msg = sdkError?.message || sdkError?.toString() || "v0 API failed"
+      return NextResponse.json({ error: `v0 generation failed: ${msg}` }, { status: 502 });
+    }
 
     console.log("[generate] Chat created:", chat.id);
 

@@ -133,8 +133,15 @@ export default function DemoBuilderPage() {
           }),
         })
         if (!genRes.ok) {
-          const err = await genRes.json()
-          throw new Error(err.error || "Generation failed")
+          let errMsg = "Generation failed"
+          try {
+            const err = await genRes.json()
+            errMsg = err.error || errMsg
+          } catch {
+            const text = await genRes.text().catch(() => "")
+            errMsg = text.slice(0, 200) || `HTTP ${genRes.status}`
+          }
+          throw new Error(errMsg)
         }
         const genData = await genRes.json()
         updateJob(job.id, { demoUrl: genData.demoUrl })
@@ -154,8 +161,14 @@ export default function DemoBuilderPage() {
           }),
         })
         if (!gitRes.ok) {
-          const err = await gitRes.json()
-          throw new Error(err.error || "GitHub push failed")
+          let errMsg = "GitHub push failed"
+          try {
+            const err = await gitRes.json()
+            errMsg = err.error || errMsg
+          } catch {
+            errMsg = `GitHub push HTTP ${gitRes.status}`
+          }
+          throw new Error(errMsg)
         }
         const gitData = await gitRes.json()
         updateJob(job.id, { githubUrl: gitData.url })
@@ -171,8 +184,14 @@ export default function DemoBuilderPage() {
           }),
         })
         if (!deployRes.ok) {
-          const err = await deployRes.json()
-          throw new Error(err.error || "Deploy failed")
+          let errMsg = "Deploy failed"
+          try {
+            const err = await deployRes.json()
+            errMsg = err.error || errMsg
+          } catch {
+            errMsg = `Deploy HTTP ${deployRes.status}`
+          }
+          throw new Error(errMsg)
         }
         const deployData = await deployRes.json()
         

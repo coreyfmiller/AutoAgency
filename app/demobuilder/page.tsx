@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
 import {
   Rocket,
   Plus,
@@ -53,11 +53,36 @@ function makeJobId() {
   return `job-${Date.now()}-${jobCounter}`
 }
 
+const STORAGE_KEY = 'demobuilder_jobs'
+
+function loadJobs(): DemoJob[] {
+  if (typeof window === 'undefined') return []
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    return raw ? JSON.parse(raw) : []
+  } catch { return [] }
+}
+
+function saveJobs(jobs: DemoJob[]) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(jobs)) } catch {}
+}
+
 export default function DemoBuilderPage() {
   const [jobs, setJobs] = useState<DemoJob[]>([])
   const [newProjectName, setNewProjectName] = useState("")
   const [newPrompt, setNewPrompt] = useState("")
   const [isRunning, setIsRunning] = useState(false)
+
+  // Load from localStorage on mount
+  useEffect(() => {
+    const saved = loadJobs()
+    if (saved.length > 0) setJobs(saved)
+  }, [])
+
+  // Save to localStorage on every change
+  useEffect(() => {
+    if (jobs.length > 0) saveJobs(jobs)
+  }, [jobs])
 
   const addJob = useCallback(() => {
     if (!newProjectName.trim() || !newPrompt.trim()) return
@@ -318,15 +343,27 @@ export default function DemoBuilderPage() {
           </div>
 
           <div className="flex items-center justify-between">
-            <button
-              type="button"
-              onClick={addJob}
-              disabled={!newProjectName.trim() || !newPrompt.trim()}
-              className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Plus className="size-4" />
-              Add to Queue
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={addJob}
+                disabled={!newProjectName.trim() || !newPrompt.trim()}
+                className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Plus className="size-4" />
+                Add to Queue
+              </button>
+              {jobs.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => { if (confirm('Clear all jobs?')) { setJobs([]); localStorage.removeItem(STORAGE_KEY) } }}
+                  className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-2 text-xs text-muted-foreground hover:text-red-400 hover:border-red-400/40 transition-colors"
+                >
+                  <Trash2 className="size-3" />
+                  Clear All
+                </button>
+              )}
+            </div>
             <span className="text-xs text-muted-foreground">
               {jobs.length} job{jobs.length !== 1 ? "s" : ""} total · {queuedCount} queued · {doneCount} done
             </span>

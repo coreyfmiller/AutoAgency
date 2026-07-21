@@ -3,6 +3,7 @@ import { v0 } from "v0-sdk";
 
 export const maxDuration = 300;
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 export async function POST(request: NextRequest) {
   try {

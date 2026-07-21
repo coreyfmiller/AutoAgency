@@ -53,6 +53,7 @@ export async function POST(request: NextRequest) {
             repo: repoFullName,
           },
           buildCommand: "next build",
+          installCommand: "npm install",
           resourceConfig: {
             buildMachineType: "elastic",
           },
@@ -65,13 +66,16 @@ export async function POST(request: NextRequest) {
         throw new Error(`Vercel project creation failed: ${error}`);
       }
 
-      console.log("[deploy] Project created");
+      console.log("[deploy] Project created, waiting for initial deployment...");
+      
+      // Wait a moment for Vercel to pick up the repo and start building
+      await new Promise((r) => setTimeout(r, 5000));
     } else {
       console.log("[deploy] Project already exists");
     }
 
-    // Trigger a build by pushing a deploy trigger file to the repo
-    // Get existing file SHA if it exists
+    // Force a deployment using the Vercel Deploy Hook approach:
+    // Push a trigger commit to the repo so Vercel's git integration picks it up
     let sha: string | undefined;
     const existingRes = await fetch(
       `https://api.github.com/repos/${repoFullName}/contents/.vercel-trigger`,
@@ -89,7 +93,7 @@ export async function POST(request: NextRequest) {
 
     const triggerContent = `Deployed via RefreshFactory.ai at ${new Date().toISOString()}`;
 
-    await fetch(
+    const triggerRes = await fetch(
       `https://api.github.com/repos/${repoFullName}/contents/.vercel-trigger`,
       {
         method: "PUT",
@@ -106,7 +110,44 @@ export async function POST(request: NextRequest) {
       }
     );
 
-    console.log("[deploy] Triggered build via git push");
+    if (!triggerRes.ok) {
+      console.error("[deploy] Git trigger push failed:", await triggerRes.text());
+    } else {
+      console.log("[deploy] Triggered build via git push");
+    }
+
+    // Also try creating a deployment via the Vercel API directly as a fallback
+    // This ensures a deployment happens even if git integration is slow
+    try {
+      const createDeployRes = await fetch("https://api.vercel.com/v13/deployments", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${process.env.VERCEL_API_TOKEN}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: vercelName,
+          project: vercelName,
+          target: "production",
+          gitSource: {
+            type: "github",
+            repo: repoFullName.split("/")[1],
+            org: repoFullName.split("/")[0],
+            ref: "main",
+          },
+        }),
+      });
+
+      if (createDeployRes.ok) {
+        const deployData = await createDeployRes.json();
+        console.log("[deploy] Direct deployment created:", deployData.url);
+      } else {
+        const errText = await createDeployRes.text();
+        console.log("[deploy] Direct deployment fallback failed (non-critical):", errText);
+      }
+    } catch (e) {
+      console.log("[deploy] Direct deployment attempt failed (non-critical):", e);
+    }
 
     return NextResponse.json({
       success: true,
